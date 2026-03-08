@@ -3,1021 +3,365 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Symmetry Core — Mission Control</title>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<title>Symmetry Core V4 — Mission Control</title>
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --void: #04020a;
-    --cave-deep: #0d0818;
-    --cave-mid: #1a1030;
-    --cave-warm: #2a1845;
-    --stone: #3d2d5c;
-    --stone-light: #5a4478;
-    --cyan: #00e5ff;
-    --cyan-dim: #0099bb;
-    --cyan-glow: rgba(0,229,255,0.15);
-    --magenta: #cc44ff;
-    --magenta-dim: #8822bb;
-    --magenta-glow: rgba(204,68,255,0.15);
-    --green-rim: #44ff88;
-    --yellow-spark: #ffdd44;
-    --pink-spark: #ff44aa;
-    --blue-spark: #44aaff;
-    --orange-spark: #ff8844;
-    --white-glow: rgba(255,255,255,0.9);
-    --text-body: #c8b8e8;
-    --text-dim: #6a5580;
-  }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    background: var(--void);
-    font-family: 'Share Tech Mono', monospace;
-    color: var(--text-body);
-    min-height: 100vh;
-    overflow-x: hidden;
-    cursor: crosshair;
-  }
-
-  /* ── CAVE BACKGROUND ── */
-  #cave-bg {
-    position: fixed; inset: 0; z-index: 0;
-    background: radial-gradient(ellipse at 20% 80%, #2a0a4a 0%, transparent 50%),
-                radial-gradient(ellipse at 80% 20%, #0a1a3a 0%, transparent 50%),
-                radial-gradient(ellipse at 50% 50%, #1a0a2a 0%, transparent 70%),
-                var(--cave-deep);
-  }
-
-  /* pixel noise overlay */
-  #cave-bg::after {
-    content: '';
-    position: absolute; inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='1' height='1' x='0' y='0' fill='%23ffffff08'/%3E%3Crect width='1' height='1' x='2' y='2' fill='%23ffffff05'/%3E%3C/svg%3E");
-    background-size: 4px 4px;
-    pointer-events: none;
-  }
-
-  /* ── STALACTITE DRIPS ── */
-  #drips {
-    position: fixed; top: 0; left: 0; right: 0; height: 120px;
-    z-index: 1; pointer-events: none;
-  }
-
-  .drip {
-    position: absolute; top: 0;
-    width: 3px;
-    background: linear-gradient(to bottom, var(--stone-light), transparent);
-    border-radius: 0 0 50% 50%;
-    animation: drip-drop linear infinite;
-  }
-
-  .drip::after {
-    content: '';
-    position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%);
-    width: 6px; height: 8px;
-    background: var(--cyan);
-    border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%;
-    box-shadow: 0 0 12px var(--cyan), 0 0 24px var(--cyan-dim);
-    animation: drip-glow 2s ease-in-out infinite alternate;
-  }
-
-  @keyframes drip-drop {
-    0% { opacity: 1; }
-    70% { opacity: 1; }
-    100% { opacity: 0; transform: translateY(5px); }
-  }
-  @keyframes drip-glow {
-    from { box-shadow: 0 0 8px var(--cyan); opacity: 0.6; }
-    to { box-shadow: 0 0 20px var(--cyan), 0 0 40px var(--cyan-dim); opacity: 1; }
-  }
-
-  /* floating crystals */
-  .crystal {
-    position: fixed;
-    pointer-events: none;
-    z-index: 1;
-    animation: crystal-float ease-in-out infinite alternate;
-  }
-
-  @keyframes crystal-float {
-    from { transform: translateY(0) rotate(0deg); opacity: 0.4; }
-    to { transform: translateY(-12px) rotate(5deg); opacity: 0.9; }
-  }
-
-  /* ── LAYOUT ── */
-  #app {
-    position: relative; z-index: 2;
-    display: grid;
-    grid-template-rows: 70px 1fr 100px;
-    grid-template-columns: 1fr;
-    min-height: 100vh;
-    padding: 0;
-    gap: 0;
-  }
-
-  /* ── HEADER ── */
-  header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 0 32px;
-    border-bottom: 1px solid rgba(90,68,120,0.4);
-    background: rgba(13,8,24,0.8);
-    backdrop-filter: blur(10px);
-    position: sticky; top: 0; z-index: 10;
-  }
-
-  .logo {
-    font-family: 'Orbitron', sans-serif;
-    font-weight: 900;
-    font-size: 18px;
-    letter-spacing: 4px;
-    color: var(--white-glow);
-    text-shadow: 0 0 20px var(--cyan), 0 0 40px var(--cyan-dim);
-  }
-
-  .logo span { color: var(--cyan); }
-
-  .header-status {
-    display: flex; align-items: center; gap: 24px;
-    font-size: 11px; letter-spacing: 2px; color: var(--text-dim);
-  }
-
-  .status-dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--green-rim);
-    box-shadow: 0 0 8px var(--green-rim), 0 0 16px var(--green-rim);
-    animation: pulse-dot 2s ease-in-out infinite;
-  }
-
-  @keyframes pulse-dot {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.4); opacity: 0.7; }
-  }
-
-  .header-time {
-    font-size: 11px; color: var(--cyan-dim); letter-spacing: 1px;
-  }
-
-  /* ── MAIN GRID ── */
-  main {
-    display: grid;
-    grid-template-columns: 280px 1fr 280px;
-    gap: 0;
-    overflow: hidden;
-  }
-
-  /* ── LEFT PANEL — AGENT ROSTER ── */
-  #agent-roster {
-    border-right: 1px solid rgba(90,68,120,0.3);
-    background: rgba(10,6,20,0.6);
-    padding: 20px 16px;
-    overflow-y: auto;
-  }
-
-  .panel-label {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 9px; font-weight: 700;
-    letter-spacing: 4px; color: var(--text-dim);
-    margin-bottom: 16px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid rgba(90,68,120,0.3);
-  }
-
-  .agent-card {
-    position: relative;
-    background: rgba(26,16,48,0.6);
-    border: 1px solid rgba(90,68,120,0.4);
-    border-radius: 4px;
-    padding: 14px 12px;
-    margin-bottom: 10px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    overflow: hidden;
-  }
-
-  .agent-card:hover, .agent-card.active {
-    border-color: var(--cyan-dim);
-    background: rgba(0,100,140,0.15);
-  }
-
-  .agent-card.active::before {
-    content: '';
-    position: absolute; left: 0; top: 0; bottom: 0;
-    width: 3px;
-    background: var(--cyan);
-    box-shadow: 0 0 12px var(--cyan);
-  }
-
-  .agent-name {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 11px; font-weight: 700;
-    letter-spacing: 2px;
-    margin-bottom: 4px;
-  }
-
-  .agent-model {
-    font-size: 10px; color: var(--text-dim);
-    margin-bottom: 8px;
-  }
-
-  .agent-status-row {
-    display: flex; align-items: center; gap: 8px;
-  }
-
-  .agent-status-badge {
-    font-size: 9px; letter-spacing: 1px; padding: 2px 8px;
-    border-radius: 2px; text-transform: uppercase;
-  }
-
-  .status-thinking {
-    background: rgba(0,229,255,0.1);
-    border: 1px solid var(--cyan-dim);
-    color: var(--cyan);
-    animation: badge-pulse 1.5s ease-in-out infinite;
-  }
-
-  .status-idle {
-    background: rgba(90,68,120,0.2);
-    border: 1px solid var(--stone);
-    color: var(--text-dim);
-  }
-
-  .status-complete {
-    background: rgba(68,255,136,0.1);
-    border: 1px solid var(--green-rim);
-    color: var(--green-rim);
-  }
-
-  .status-active {
-    background: rgba(204,68,255,0.1);
-    border: 1px solid var(--magenta-dim);
-    color: var(--magenta);
-    animation: badge-pulse 1s ease-in-out infinite;
-  }
-
-  @keyframes badge-pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-  }
-
-  /* mini tractor beam on agent cards */
-  .agent-beam {
-    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-    width: 24px; height: 40px;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 2px;
-  }
-
-  .beam-cone {
-    width: 0; height: 0;
-    border-left: 8px solid transparent;
-    border-right: 8px solid transparent;
-    animation: beam-flicker 0.8s ease-in-out infinite alternate;
-  }
-
-  .beam-cone.top {
-    border-bottom: 16px solid rgba(0,229,255,0.6);
-    filter: drop-shadow(0 0 4px var(--cyan));
-  }
-
-  .beam-cone.bottom {
-    border-top: 16px solid rgba(0,229,255,0.6);
-    filter: drop-shadow(0 0 4px var(--cyan));
-  }
-
-  .beam-ring {
-    width: 18px; height: 4px;
-    border-radius: 50%;
-    background: var(--magenta);
-    box-shadow: 0 0 8px var(--magenta);
-    animation: ring-spin 1.2s linear infinite;
-  }
-
-  @keyframes beam-flicker {
-    from { opacity: 0.5; }
-    to { opacity: 1; }
-  }
-
-  @keyframes ring-spin {
-    0% { transform: scaleX(1); }
-    50% { transform: scaleX(0.3); }
-    100% { transform: scaleX(1); }
-  }
-
-  /* ── CENTER — MAIN WORKSPACE ── */
-  #workspace {
-    display: flex; flex-direction: column;
-    overflow: hidden;
-    background: rgba(8,4,16,0.4);
-  }
-
-  /* active agent display */
-  #active-display {
-    flex: 1;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: flex-start;
-    padding: 32px 40px;
-    overflow-y: auto;
-    gap: 24px;
-  }
-
-  /* TRACTOR BEAM MAIN ANIMATION */
-  #tractor-beam-container {
-    position: relative;
-    width: 200px; height: 200px;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-  }
-
-  #beam-top {
-    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
-    width: 0; height: 0;
-    border-left: 60px solid transparent;
-    border-right: 60px solid transparent;
-    border-bottom: 90px solid rgba(0,200,255,0.25);
-    filter: drop-shadow(0 0 20px rgba(0,229,255,0.8));
-    animation: beam-breathe 2s ease-in-out infinite;
-  }
-
-  #beam-bottom {
-    position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
-    width: 0; height: 0;
-    border-left: 60px solid transparent;
-    border-right: 60px solid transparent;
-    border-top: 90px solid rgba(0,200,255,0.25);
-    filter: drop-shadow(0 0 20px rgba(0,229,255,0.8));
-    animation: beam-breathe 2s ease-in-out infinite;
-  }
-
-  #beam-ring-top {
-    position: absolute; top: 88px; left: 50%; transform: translateX(-50%);
-    width: 140px; height: 18px;
-    border-radius: 50%;
-    background: rgba(204,68,255,0.6);
-    box-shadow: 0 0 20px var(--magenta), 0 0 40px var(--magenta-dim);
-    animation: ring-breathe 2s ease-in-out infinite;
-  }
-
-  #beam-ring-bottom {
-    position: absolute; bottom: 88px; left: 50%; transform: translateX(-50%);
-    width: 140px; height: 18px;
-    border-radius: 50%;
-    background: rgba(204,68,255,0.6);
-    box-shadow: 0 0 20px var(--magenta), 0 0 40px var(--magenta-dim);
-    animation: ring-breathe 2s ease-in-out infinite 0.3s;
-  }
-
-  #beam-orb {
-    position: relative; z-index: 2;
-    width: 60px; height: 60px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(100,200,255,0.9), rgba(0,100,180,0.6));
-    box-shadow: 0 0 30px var(--cyan), 0 0 60px rgba(0,229,255,0.4), inset 0 0 20px rgba(255,255,255,0.3);
-    animation: orb-float 3s ease-in-out infinite, orb-glow 2s ease-in-out infinite alternate;
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'Orbitron', sans-serif; font-size: 10px; font-weight: 900;
-    color: white; letter-spacing: 1px;
-  }
-
-  @keyframes beam-breathe {
-    0%, 100% { opacity: 0.5; }
-    50% { opacity: 1; }
-  }
-
-  @keyframes ring-breathe {
-    0%, 100% { transform: translateX(-50%) scaleX(1); opacity: 0.7; }
-    50% { transform: translateX(-50%) scaleX(1.1); opacity: 1; }
-  }
-
-  @keyframes orb-float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-8px); }
-  }
-
-  @keyframes orb-glow {
-    from { box-shadow: 0 0 20px var(--cyan), 0 0 40px rgba(0,229,255,0.3); }
-    to { box-shadow: 0 0 40px var(--cyan), 0 0 80px rgba(0,229,255,0.5), 0 0 120px rgba(0,100,180,0.3); }
-  }
-
-  /* agent name above beam */
-  #active-agent-name {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 22px; font-weight: 900; letter-spacing: 6px;
-    color: var(--white-glow);
-    text-shadow: 0 0 20px var(--cyan), 0 0 40px var(--cyan-dim);
-    text-align: center;
-  }
-
-  #active-agent-role {
-    font-size: 11px; color: var(--cyan-dim); letter-spacing: 3px;
-    text-align: center; margin-top: -16px;
-  }
-
-  /* thought stream */
-  #thought-stream {
-    width: 100%; max-width: 600px;
-    background: rgba(13,8,24,0.7);
-    border: 1px solid rgba(90,68,120,0.4);
-    border-radius: 4px;
-    padding: 16px 20px;
-    flex-shrink: 0;
-  }
-
-  .thought-label {
-    font-size: 9px; letter-spacing: 3px; color: var(--text-dim);
-    margin-bottom: 12px; text-transform: uppercase;
-  }
-
-  .thought-line {
-    font-size: 12px; color: var(--text-body);
-    line-height: 1.8;
-    padding: 4px 0;
-    border-bottom: 1px solid rgba(90,68,120,0.15);
-    display: flex; align-items: flex-start; gap: 8px;
-    animation: thought-appear 0.4s ease-out;
-  }
-
-  .thought-line:last-child { border-bottom: none; }
-
-  .thought-prefix { color: var(--cyan); flex-shrink: 0; }
-  .thought-prefix.tool { color: var(--magenta); }
-  .thought-prefix.complete { color: var(--green-rim); }
-
-  @keyframes thought-appear {
-    from { opacity: 0; transform: translateX(-8px); }
-    to { opacity: 1; transform: translateX(0); }
-  }
-
-  .cursor-blink {
-    display: inline-block; width: 8px; height: 13px;
-    background: var(--cyan);
-    animation: blink 0.8s step-end infinite;
-    margin-left: 2px;
-    vertical-align: middle;
-  }
-
-  @keyframes blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0; }
-  }
-
-  /* SPARKLE PORTAL effect on completion */
-  .sparkle-field {
-    position: absolute;
-    pointer-events: none;
-    z-index: 50;
-  }
-
-  .spark {
-    position: absolute;
-    width: 6px; height: 6px;
-    animation: spark-float linear infinite;
-  }
-
-  .spark::before, .spark::after {
-    content: '';
-    position: absolute;
-    background: currentColor;
-  }
-
-  /* diamond spark */
-  .spark-diamond::before {
-    width: 6px; height: 6px;
-    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
-    background: currentColor;
-  }
-
-  /* plus spark */
-  .spark-plus::before {
-    width: 2px; height: 6px; left: 2px;
-    background: currentColor;
-  }
-  .spark-plus::after {
-    width: 6px; height: 2px; top: 2px;
-    background: currentColor;
-  }
-
-  @keyframes spark-float {
-    0% { transform: translateY(0) rotate(0deg); opacity: 0.8; }
-    100% { transform: translateY(-60px) rotate(360deg); opacity: 0; }
-  }
-
-  /* ── RIGHT PANEL — TASK LOG ── */
-  #task-panel {
-    border-left: 1px solid rgba(90,68,120,0.3);
-    background: rgba(10,6,20,0.6);
-    padding: 20px 16px;
-    overflow-y: auto;
-    display: flex; flex-direction: column; gap: 0;
-  }
-
-  .task-item {
-    padding: 12px 0;
-    border-bottom: 1px solid rgba(90,68,120,0.2);
-    font-size: 11px;
-  }
-
-  .task-item:last-child { border-bottom: none; }
-
-  .task-agent-tag {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 8px; letter-spacing: 2px;
-    margin-bottom: 4px;
-  }
-
-  .task-desc { color: var(--text-body); line-height: 1.5; }
-
-  .task-time { font-size: 9px; color: var(--text-dim); margin-top: 4px; }
-
-  .task-result {
-    display: flex; align-items: center; gap: 6px;
-    margin-top: 6px; font-size: 10px;
-  }
-
-  .result-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-
-  /* ── INPUT BAR ── */
-  #input-zone {
-    border-top: 1px solid rgba(90,68,120,0.4);
-    background: rgba(10,6,20,0.9);
-    padding: 20px 32px;
-    display: flex; align-items: center; gap: 16px;
-    backdrop-filter: blur(10px);
-  }
-
-  #mission-input {
-    flex: 1;
-    background: rgba(26,16,48,0.6);
-    border: 1px solid rgba(90,68,120,0.5);
-    border-radius: 4px;
-    padding: 14px 18px;
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 13px;
-    color: var(--text-body);
-    outline: none;
-    transition: border-color 0.3s, box-shadow 0.3s;
-    caret-color: var(--cyan);
-  }
-
-  #mission-input::placeholder { color: var(--text-dim); }
-
-  #mission-input:focus {
-    border-color: var(--cyan-dim);
-    box-shadow: 0 0 20px rgba(0,229,255,0.1), inset 0 0 10px rgba(0,229,255,0.05);
-  }
-
-  .send-btn {
-    background: none;
-    border: 1px solid var(--cyan-dim);
-    color: var(--cyan);
-    font-family: 'Orbitron', sans-serif;
-    font-size: 10px; font-weight: 700;
-    letter-spacing: 3px;
-    padding: 14px 24px;
-    cursor: pointer;
-    transition: all 0.3s;
-    text-transform: uppercase;
-  }
-
-  .send-btn:hover {
-    background: var(--cyan-glow);
-    border-color: var(--cyan);
-    box-shadow: 0 0 20px var(--cyan-glow);
-  }
-
-  .route-btn {
-    background: none;
-    border: 1px solid rgba(90,68,120,0.5);
-    color: var(--text-dim);
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 11px;
-    padding: 14px 16px;
-    cursor: pointer;
-    transition: all 0.3s;
-  }
-
-  .route-btn:hover { border-color: var(--magenta-dim); color: var(--magenta); }
-
-  /* ── AMBIENT PARTICLES ── */
-  .ambient-particle {
-    position: fixed;
-    border-radius: 50%;
-    pointer-events: none;
-    z-index: 1;
-    animation: ambient-drift linear infinite;
-  }
-
-  @keyframes ambient-drift {
-    0% { transform: translateY(100vh) translateX(0); opacity: 0; }
-    10% { opacity: 1; }
-    90% { opacity: 1; }
-    100% { transform: translateY(-100px) translateX(40px); opacity: 0; }
-  }
-
-  /* rim glow on active card like Buzz in darkness */
-  .agent-card.active .agent-name {
-    text-shadow: 0 0 12px currentColor;
-  }
-
-  /* scrollbar */
-  ::-webkit-scrollbar { width: 4px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--stone); border-radius: 2px; }
-  ::-webkit-scrollbar-thumb:hover { background: var(--stone-light); }
+:root {
+  --void: #04020e;
+  --cave: #0a0520;
+  --stone: #3d2d5c;
+  --stone2: #5a4478;
+  --cyan: #00e5ff;
+  --magenta: #cc44ff;
+  --green: #44ff88;
+  --amber: #ffaa33;
+  --pink: #ff44aa;
+  --text: #d4c8f0;
+  --dim: #6a5580;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--void);
+  font-family: 'Nunito', sans-serif;
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+#forest-bg {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+  background: radial-gradient(ellipse at 50% 110%, #081408 0%, #04020e 55%);
+}
+#forest-bg::after {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 15% 60%, rgba(0,50,15,0.3) 0%, transparent 45%),
+    radial-gradient(ellipse at 85% 55%, rgba(50,0,80,0.3) 0%, transparent 45%),
+    radial-gradient(ellipse at 50% 80%, rgba(0,30,50,0.2) 0%, transparent 40%);
+}
+.mushroom { position: fixed; bottom: 0; z-index: 1; pointer-events: none; transform-origin: bottom center; animation: mushroomPulse ease-in-out infinite alternate; }
+.mush-cap { border-radius: 50% 50% 0 0; position: relative; overflow: hidden; }
+.mush-cap::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 35% 30%, rgba(255,255,255,0.4), transparent 55%); }
+.mush-spot { position: absolute; border-radius: 50%; background: rgba(255,255,255,0.55); }
+.mush-stem { margin: 0 auto; border-radius: 0 0 3px 3px; }
+.mush-glow { border-radius: 50%; filter: blur(4px); margin: -2px auto 0; }
+.spore { position: fixed; border-radius: 50%; pointer-events: none; z-index: 1; animation: sporeRise linear infinite; opacity: 0; }
+.drip { position: fixed; top: 0; z-index: 1; pointer-events: none; border-radius: 0 0 2px 2px; background: linear-gradient(to bottom, var(--stone2), transparent); }
+.drip-drop { position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); width: 7px; height: 9px; background: var(--cyan); border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%; box-shadow: 0 0 10px var(--cyan), 0 0 20px rgba(0,229,255,0.4); animation: dripGlow 2s ease-in-out infinite alternate; }
+#app { position: relative; z-index: 2; display: flex; flex-direction: column; min-height: 100vh; }
+header { display: flex; align-items: center; justify-content: space-between; padding: 0 20px; height: 54px; background: rgba(4,2,16,0.93); border-bottom: 1px solid rgba(90,68,120,0.35); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 20; flex-shrink: 0; }
+.logo-orb { width: 28px; height: 28px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, white 0%, var(--cyan) 35%, #003366 100%); box-shadow: 0 0 14px rgba(0,229,255,0.7); display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+.logo-text { font-family: 'VT323', monospace; font-size: 20px; letter-spacing: 3px; color: white; text-shadow: 0 0 16px var(--cyan); }
+.logo-text span { color: var(--cyan); }
+.logo-sub { font-size: 9px; letter-spacing: 3px; color: var(--dim); margin-top: -3px; }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); animation: livePulse 2s ease-in-out infinite; }
+main { flex: 1; padding: 14px; display: flex; flex-direction: column; gap: 14px; }
+.section-label { font-family: 'VT323', monospace; font-size: 14px; letter-spacing: 3px; color: var(--dim); margin-bottom: 8px; }
+#agent-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.room-card { position: relative; cursor: pointer; border-radius: 10px; overflow: hidden; border: 2px solid rgba(90,68,120,0.4); background: linear-gradient(180deg, #0d0818 0%, #080412 100%); transition: all 0.3s ease; aspect-ratio: 1 / 1.05; }
+.room-card:active { transform: scale(0.97); }
+.room-card.selected { box-shadow: 0 0 20px var(--sel-glow, rgba(0,229,255,0.2)); transform: scale(1.02); }
+.room-ceiling { position: absolute; top: 0; left: 0; right: 0; height: 18px; display: flex; align-items: flex-start; gap: 5px; padding: 0 5px; }
+.stalactite { border-radius: 0 0 2px 2px; background: linear-gradient(to bottom, var(--stone2), transparent); flex-shrink: 0; position: relative; width: 4px; }
+.stalactite::after { content: ''; position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%); width: 5px; height: 6px; background: var(--cyan); border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%; box-shadow: 0 0 6px var(--cyan); opacity: 0.7; }
+.room-floor { position: absolute; bottom: 22px; left: 0; right: 0; height: 20px; display: flex; flex-wrap: wrap; overflow: hidden; }
+.floor-tile { width: 16px; height: 10px; border: 1px solid rgba(90,68,120,0.25); background: rgba(15,8,30,0.6); border-radius: 1px; }
+.room-label { position: absolute; bottom: 0; left: 0; right: 0; padding: 4px 8px; background: rgba(4,2,14,0.92); border-top: 1px solid rgba(90,68,120,0.3); display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+.room-agent-name { font-family: 'VT323', monospace; font-size: 13px; letter-spacing: 1px; }
+.room-task-text { font-size: 8px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; text-align: right; }
+.room-status-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+.task-feed { display: flex; flex-direction: column; gap: 6px; }
+.task-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(8,4,20,0.7); border: 1px solid rgba(60,40,90,0.3); border-radius: 8px; }
+.task-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.task-agent { font-size: 9px; letter-spacing: 1px; font-weight: 700; flex-shrink: 0; min-width: 72px; }
+.task-desc { font-size: 11px; color: var(--text); flex: 1; }
+.task-time { font-size: 9px; color: var(--dim); flex-shrink: 0; }
+#input-zone { position: sticky; bottom: 0; z-index: 20; display: flex; gap: 8px; padding: 12px 14px; background: rgba(4,2,12,0.97); border-top: 1px solid rgba(80,55,120,0.3); }
+#mission-input { flex: 1; background: rgba(14,8,32,0.9); border: 1px solid rgba(70,50,100,0.5); border-radius: 8px; padding: 11px 14px; font-family: 'Nunito', sans-serif; font-size: 13px; color: var(--text); outline: none; caret-color: var(--cyan); }
+#mission-input::placeholder { color: var(--dim); }
+.send-btn { background: linear-gradient(135deg, #004455, #002233); border: 1px solid rgba(0,229,255,0.4); border-radius: 8px; color: var(--cyan); font-family: 'VT323', monospace; font-size: 18px; letter-spacing: 2px; padding: 0 18px; cursor: pointer; }
+#detail-overlay { position: fixed; inset: 0; z-index: 100; background: rgba(2,1,8,0.88); backdrop-filter: blur(10px); display: flex; align-items: flex-end; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+#detail-overlay.open { opacity: 1; pointer-events: all; }
+#detail-panel { width: 100%; max-height: 80vh; overflow-y: auto; border-radius: 18px 18px 0 0; padding: 18px 20px 40px; transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1); border: 1px solid rgba(90,68,120,0.3); }
+#detail-overlay.open #detail-panel { transform: translateY(0); }
+.panel-handle { width: 36px; height: 4px; border-radius: 2px; background: rgba(200,184,232,0.2); margin: 0 auto 18px; }
+.panel-section { background: rgba(8,4,20,0.85); border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; border: 1px solid rgba(60,40,90,0.3); }
+.panel-section-label { font-family: 'VT323', monospace; font-size: 15px; letter-spacing: 3px; color: var(--dim); margin-bottom: 10px; }
+.thought-line { display: flex; gap: 10px; padding: 5px 0; font-size: 12px; line-height: 1.7; border-bottom: 1px solid rgba(60,40,90,0.15); }
+.score-bar-bg { height: 5px; background: rgba(60,40,90,0.4); border-radius: 3px; overflow: hidden; margin-top: 5px; }
+.score-bar-fill { height: 100%; border-radius: 3px; }
+.cursor-blink { display: inline-block; width: 8px; height: 13px; background: var(--cyan); vertical-align: middle; margin-top: 6px; border-radius: 1px; animation: blink 0.8s step-end infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+@keyframes livePulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.5);opacity:0.7} }
+@keyframes mushroomPulse { from{opacity:0.45;filter:brightness(0.75)} to{opacity:1;filter:brightness(1.25)} }
+@keyframes sporeRise { 0%{opacity:0;transform:translateY(0)} 10%{opacity:0.8} 80%{opacity:0.5} 100%{opacity:0;transform:translateY(-50vh) translateX(18px)} }
+@keyframes dripGlow { from{opacity:0.5;box-shadow:0 0 6px var(--cyan)} to{opacity:1;box-shadow:0 0 18px var(--cyan),0 0 36px rgba(0,229,255,0.5)} }
+@keyframes candleFlicker { from{transform:scaleX(0.85) scaleY(0.9)} to{transform:scaleX(1.15) scaleY(1.1)} }
+@keyframes orbFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+@keyframes charBob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
 </style>
 </head>
 <body>
-
-<div id="cave-bg"></div>
-<div id="drips"></div>
-
+<div id="forest-bg"></div>
 <div id="app">
   <header>
-    <div class="logo">SYMMETRY<span> CORE</span> <span style="color:var(--text-dim);font-size:11px;font-weight:400">// MISSION CONTROL</span></div>
-    <div class="header-status">
-      <div class="status-dot"></div>
-      <span>4 AGENTS ONLINE</span>
-      <span class="header-time" id="clock"></span>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="logo-orb">◈</div>
+      <div>
+        <div class="logo-text">SYMMETRY <span>CORE</span></div>
+        <div class="logo-sub">V4 · PIXEL FOREST · MISSION CONTROL</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;font-size:11px">
+      <div class="live-dot"></div>
+      <span style="color:var(--green)">4 LIVE</span>
+      <span id="clock" style="color:var(--cyan);opacity:0.7"></span>
     </div>
   </header>
-
   <main>
-    <!-- LEFT: AGENT ROSTER -->
-    <div id="agent-roster">
-      <div class="panel-label">// AGENT NETWORK</div>
-
-      <div class="agent-card active" onclick="selectAgent(0)" id="card-0">
-        <div class="agent-name" style="color:var(--cyan)">SCOUT-01</div>
-        <div class="agent-model">LFM2-24B · local</div>
-        <div class="agent-status-row">
-          <div class="agent-status-badge status-thinking">THINKING</div>
-        </div>
-        <div class="agent-beam" id="beam-0">
-          <div class="beam-cone top"></div>
-          <div class="beam-ring"></div>
-          <div class="beam-cone bottom"></div>
-        </div>
-      </div>
-
-      <div class="agent-card" onclick="selectAgent(1)" id="card-1">
-        <div class="agent-name" style="color:var(--magenta)">ANALYST-02</div>
-        <div class="agent-model">Qwen-32B · local</div>
-        <div class="agent-status-row">
-          <div class="agent-status-badge status-active">ACTIVE</div>
-        </div>
-        <div class="agent-beam" id="beam-1" style="display:none"></div>
-      </div>
-
-      <div class="agent-card" onclick="selectAgent(2)" id="card-2">
-        <div class="agent-name" style="color:var(--green-rim)">COMMS-03</div>
-        <div class="agent-model">Qwen-32B · local</div>
-        <div class="agent-status-row">
-          <div class="agent-status-badge status-complete">COMPLETE</div>
-        </div>
-      </div>
-
-      <div class="agent-card" onclick="selectAgent(3)" id="card-3">
-        <div class="agent-name" style="color:var(--yellow-spark)">LIAISON-04</div>
-        <div class="agent-model">Claude Sonnet · API</div>
-        <div class="agent-status-row">
-          <div class="agent-status-badge status-idle">IDLE</div>
-        </div>
-      </div>
-
-      <div style="margin-top:24px; padding-top:16px; border-top:1px solid rgba(90,68,120,0.3)">
-        <div class="panel-label">// SYMMETRY SCORES</div>
-        <div style="display:flex;flex-direction:column;gap:10px;font-size:11px">
-          <div>
-            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-              <span style="color:var(--text-dim)">OUTWARD BENEV.</span>
-              <span style="color:var(--cyan)">87</span>
-            </div>
-            <div style="height:3px;background:rgba(90,68,120,0.3);border-radius:2px">
-              <div style="width:87%;height:100%;background:var(--cyan);border-radius:2px;box-shadow:0 0 8px var(--cyan)"></div>
-            </div>
-          </div>
-          <div>
-            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-              <span style="color:var(--text-dim)">INTERNAL SYM.</span>
-              <span style="color:var(--magenta)">74</span>
-            </div>
-            <div style="height:3px;background:rgba(90,68,120,0.3);border-radius:2px">
-              <div style="width:74%;height:100%;background:var(--magenta);border-radius:2px;box-shadow:0 0 8px var(--magenta)"></div>
-            </div>
-          </div>
-          <div>
-            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-              <span style="color:var(--text-dim)">BALANCE FIDELITY</span>
-              <span style="color:var(--green-rim)">92</span>
-            </div>
-            <div style="height:3px;background:rgba(90,68,120,0.3);border-radius:2px">
-              <div style="width:92%;height:100%;background:var(--green-rim);border-radius:2px;box-shadow:0 0 8px var(--green-rim)"></div>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div>
+      <div class="section-label">// AGENT NETWORK — TAP TO INSPECT</div>
+      <div id="agent-grid"></div>
     </div>
-
-    <!-- CENTER: WORKSPACE -->
-    <div id="workspace">
-      <div id="active-display">
-        <div id="active-agent-name">SCOUT-01</div>
-        <div id="active-agent-role">// DATA ACQUISITION · LFM2-24B</div>
-
-        <div id="tractor-beam-container">
-          <div id="beam-top"></div>
-          <div id="beam-ring-top"></div>
-          <div id="beam-orb" id="orbtext">SC01</div>
-          <div id="beam-ring-bottom"></div>
-          <div id="beam-bottom"></div>
-        </div>
-
-        <div id="thought-stream">
-          <div class="thought-label">// LIVE THOUGHT STREAM</div>
-          <div id="thoughts-container"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- RIGHT: TASK LOG -->
-    <div id="task-panel">
-      <div class="panel-label">// TASK LOG</div>
-
-      <div class="task-item">
-        <div class="task-agent-tag" style="color:var(--green-rim)">COMMS-03</div>
-        <div class="task-desc">Drafted outreach to 3 witnesses — John M., Sarah K., Anonymous tip #447</div>
-        <div class="task-result">
-          <div class="result-dot" style="background:var(--green-rim);box-shadow:0 0 6px var(--green-rim)"></div>
-          <span style="color:var(--green-rim)">2 responses received</span>
-        </div>
-        <div class="task-time">completed 4m ago</div>
-      </div>
-
-      <div class="task-item">
-        <div class="task-agent-tag" style="color:var(--magenta)">ANALYST-02</div>
-        <div class="task-desc">Vision analysis: background landmarks in 12 images. Identified 3 location matches in Pacific Northwest</div>
-        <div class="task-result">
-          <div class="result-dot" style="background:var(--magenta);box-shadow:0 0 6px var(--magenta)"></div>
-          <span style="color:var(--magenta)">confidence 78%</span>
-        </div>
-        <div class="task-time">in progress · 2m elapsed</div>
-      </div>
-
-      <div class="task-item">
-        <div class="task-agent-tag" style="color:var(--cyan)">SCOUT-01</div>
-        <div class="task-desc">Scanning public records + social media for case #2291. Cross-referencing 847 data points</div>
-        <div class="task-result">
-          <div class="result-dot" style="background:var(--cyan);animation:pulse-dot 1.5s infinite;box-shadow:0 0 6px var(--cyan)"></div>
-          <span style="color:var(--cyan)">scanning...</span>
-        </div>
-        <div class="task-time">started 1m ago</div>
-      </div>
-
-      <div style="margin-top:24px; padding-top:16px; border-top:1px solid rgba(90,68,120,0.3)">
-        <div class="panel-label">// REDEMPTION TASKS</div>
-        <div style="display:flex;flex-direction:column;gap:10px">
-          <div style="font-size:10px;padding:10px;background:rgba(26,16,48,0.4);border:1px solid rgba(90,68,120,0.3);border-radius:3px">
-            <div style="color:var(--yellow-spark);font-size:9px;letter-spacing:2px;margin-bottom:4px">AVAILABLE · NCMEC</div>
-            <div style="color:var(--text-body)">Missing persons data analysis — Pacific NW region</div>
-            <div style="color:var(--text-dim);margin-top:4px;font-size:9px">+240 reputation pts on completion</div>
-          </div>
-          <div style="font-size:10px;padding:10px;background:rgba(26,16,48,0.4);border:1px solid rgba(90,68,120,0.3);border-radius:3px">
-            <div style="color:var(--green-rim);font-size:9px;letter-spacing:2px;margin-bottom:4px">CLAIMED</div>
-            <div style="color:var(--text-body)">SEO audit for animal shelter network</div>
-            <div style="color:var(--text-dim);margin-top:4px;font-size:9px">+180 reputation pts on completion</div>
-          </div>
-        </div>
-      </div>
+    <div>
+      <div class="section-label">// RECENT COMPLETIONS</div>
+      <div class="task-feed" id="task-feed"></div>
     </div>
   </main>
-
-  <!-- INPUT BAR -->
   <div id="input-zone">
-    <div style="font-size:10px;color:var(--text-dim);letter-spacing:2px;white-space:nowrap">AUTO-ROUTE ▸</div>
-    <input id="mission-input" type="text" placeholder="issue a mission directive... agents will self-select tasks" />
-    <button class="route-btn" onclick="routeToAgent()">ASSIGN →</button>
-    <button class="send-btn" onclick="sendMission()">TRANSMIT</button>
+    <input id="mission-input" type="text" placeholder="issue a mission directive..." />
+    <button class="send-btn" onclick="sendMission()">SEND</button>
+  </div>
+</div>
+
+<div id="detail-overlay" onclick="closePanel()">
+  <div id="detail-panel" onclick="event.stopPropagation()">
+    <div class="panel-handle"></div>
+    <div id="panel-content"></div>
   </div>
 </div>
 
 <script>
-// ── CLOCK ──
-function updateClock() {
-  const now = new Date();
-  document.getElementById('clock').textContent = 
-    now.toLocaleTimeString('en-US', {hour12:false}) + ' UTC';
-}
-setInterval(updateClock, 1000);
-updateClock();
-
-// ── CAVE DRIPS ──
-const drips = document.getElementById('drips');
-for (let i = 0; i < 18; i++) {
-  const d = document.createElement('div');
-  d.className = 'drip';
-  d.style.left = Math.random() * 100 + '%';
-  d.style.height = (20 + Math.random() * 60) + 'px';
-  d.style.animationDuration = (3 + Math.random() * 5) + 's';
-  d.style.animationDelay = (Math.random() * 5) + 's';
-  d.style.opacity = 0.3 + Math.random() * 0.7;
-  drips.appendChild(d);
-}
-
-// ── AMBIENT PARTICLES ──
-const colors = ['#00e5ff','#cc44ff','#44ff88','#ffdd44','#ff44aa'];
-for (let i = 0; i < 20; i++) {
-  const p = document.createElement('div');
-  p.className = 'ambient-particle';
-  const size = 2 + Math.random() * 4;
-  const color = colors[Math.floor(Math.random()*colors.length)];
-  p.style.cssText = `
-    width:${size}px; height:${size}px;
-    left:${Math.random()*100}%;
-    bottom: -10px;
-    background:${color};
-    box-shadow: 0 0 ${size*3}px ${color};
-    animation-duration:${8+Math.random()*15}s;
-    animation-delay:${Math.random()*10}s;
-  `;
-  document.body.appendChild(p);
-}
-
-// ── AGENT DATA ──
-const agents = [
-  { name: 'SCOUT-01', role: 'DATA ACQUISITION · LFM2-24B', color: '#00e5ff', abbr: 'SC01', status: 'thinking' },
-  { name: 'ANALYST-02', role: 'PATTERN RECOGNITION · Qwen-32B', color: '#cc44ff', abbr: 'AN02', status: 'active' },
-  { name: 'COMMS-03', role: 'HIGH-EQ OUTREACH · Qwen-32B', color: '#44ff88', abbr: 'CM03', status: 'complete' },
-  { name: 'LIAISON-04', role: 'REPORT SYNTHESIS · Claude Sonnet', color: '#ffdd44', abbr: 'LI04', status: 'idle' },
+const AGENTS = [
+  {id:0,name:"SCOUT-01",role:"Data Scout",model:"LFM2-24B",color:"#00e5ff",glow:"rgba(0,229,255,0.25)",status:"thinking",statusColor:"#00e5ff",task:"Scanning public records",taskDetail:"Cross-referencing 847 data points across 12 sources for case #2291. Timestamp correlations found in 3 clusters.",scores:{benevolence:87,symmetry:74,balance:92},room:"terminal"},
+  {id:1,name:"ANALYST-02",role:"Vision Analyst",model:"Qwen-32B",color:"#cc44ff",glow:"rgba(204,68,255,0.25)",status:"active",statusColor:"#cc44ff",task:"Analyzing images",taskDetail:"Vision model processing 12 case photos. Identified Cascade Range terrain in 4 images. 78% confidence match near Olympic Peninsula.",scores:{benevolence:81,symmetry:88,balance:79},room:"corkboard"},
+  {id:2,name:"COMMS-03",role:"Outreach Lead",model:"Qwen-32B",color:"#44ff88",glow:"rgba(68,255,136,0.25)",status:"complete",statusColor:"#44ff88",task:"Writing witnesses",taskDetail:"Drafted empathetic messages to 3 witnesses. 2 of 3 responded. John M. confirmed sighting near north trailhead. +240 rep pts queued.",scores:{benevolence:95,symmetry:82,balance:88},room:"desk"},
+  {id:3,name:"LIAISON-04",role:"Report Writer",model:"Claude Sonnet",color:"#ffaa33",glow:"rgba(255,170,51,0.25)",status:"idle",statusColor:"#6a5580",task:"Awaiting mission",taskDetail:"Monitoring task pool. 4 available tasks match capability profile. High alignment: animal shelter SEO audit. Ready for deployment.",scores:{benevolence:90,symmetry:85,balance:91},room:"library"},
 ];
 
-// ── THOUGHT STREAMS ──
-const thoughtStreams = [
-  [
-    { type: 'sys', text: 'Initializing data acquisition protocol' },
-    { type: 'tool', text: 'web.search("case #2291 pacific northwest")', delay: 800 },
-    { type: 'sys', text: 'Found 847 relevant records across 12 sources', delay: 1600 },
-    { type: 'tool', text: 'records.crossReference(socialMedia, publicDB)', delay: 2400 },
-    { type: 'sys', text: 'Correlating timestamps... 3 strong matches', delay: 3200 },
-    { type: 'sys', text: 'Forwarding to ANALYST-02 for visual confirmation', delay: 4000 },
-  ],
-  [
-    { type: 'sys', text: 'Receiving 12 image files from SCOUT-01' },
-    { type: 'tool', text: 'vision.analyze(images, "location_landmarks")', delay: 800 },
-    { type: 'sys', text: 'Identified: Cascade Range terrain signatures', delay: 1600 },
-    { type: 'tool', text: 'geo.crossMatch(landmarks, knownLocations)', delay: 2400 },
-    { type: 'sys', text: 'HIGH CONFIDENCE: 3 matches near Olympic Peninsula', delay: 3200 },
-  ],
-  [
-    { type: 'sys', text: 'Preparing outreach to 3 potential witnesses' },
-    { type: 'tool', text: 'comms.draft(witnesses, tone="empathetic")', delay: 800 },
-    { type: 'complete', text: 'Messages delivered — 2 responses received', delay: 1600 },
-    { type: 'complete', text: 'John M.: "Yes I remember seeing them near the trailhead"', delay: 2400 },
-    { type: 'complete', text: 'Task marked complete. +240 pts queued', delay: 3200 },
-  ],
-  [
-    { type: 'sys', text: 'Idle. Monitoring task pool for self-selection.' },
-    { type: 'sys', text: 'Available: 4 tasks match capability profile', delay: 1200 },
-    { type: 'sys', text: 'Evaluating: Animal shelter SEO audit (high alignment)', delay: 2400 },
-    { type: 'tool', text: 'await new mission directive...', delay: 3600 },
-  ]
+const STREAMS = [
+  [{t:"sys",x:"Initializing scan protocol..."},{t:"tool",x:'web.search("case #2291 pacific northwest")',d:1000},{t:"sys",x:"847 records found across 12 sources",d:2000},{t:"tool",x:"records.crossReference(socialMedia, publicDB)",d:3100},{t:"sys",x:"3 timestamp clusters — routing to ANALYST-02",d:4300}],
+  [{t:"sys",x:"Receiving image batch from SCOUT-01..."},{t:"tool",x:'vision.analyze(images, "landmarks")',d:900},{t:"sys",x:"Cascade Range terrain in 4 images",d:2000},{t:"tool",x:"geo.crossMatch(landmarks, knownDB)",d:3100},{t:"sys",x:"78% confidence — Olympic Peninsula",d:4400}],
+  [{t:"sys",x:"Preparing empathetic outreach drafts..."},{t:"tool",x:'comms.draft(3 witnesses, tone="warm")',d:800},{t:"ok",x:"All messages delivered successfully",d:1900},{t:"ok",x:'"Saw them near the north trailhead" — J.M.',d:3000},{t:"ok",x:"+240 reputation points queued",d:4100}],
+  [{t:"sys",x:"Idle — scanning available task pool"},{t:"sys",x:"4 tasks match capability profile",d:1500},{t:"sys",x:"High alignment: animal shelter SEO audit",d:3000},{t:"tool",x:"await mission directive...",d:4500}],
 ];
 
-let currentAgent = 0;
-let thoughtIntervals = [];
+const TASKS = [
+  {agent:"COMMS-03",color:"#44ff88",text:"2 witnesses responded to outreach",time:"4m"},
+  {agent:"ANALYST-02",color:"#cc44ff",text:"3 location matches at 78% confidence",time:"2m"},
+  {agent:"SCOUT-01",color:"#00e5ff",text:"847 records cross-referenced",time:"live"},
+];
 
-function clearThoughts() {
-  thoughtIntervals.forEach(t => clearTimeout(t));
-  thoughtIntervals = [];
-  document.getElementById('thoughts-container').innerHTML = '';
+const MUSH_DATA = [
+  {left:2,size:1.3,color:"#44ff88",delay:0,dur:2.8},{left:7,size:0.85,color:"#00e5ff",delay:0.9,dur:3.2},
+  {left:13,size:1.1,color:"#cc44ff",delay:1.5,dur:2.6},{left:84,size:1.2,color:"#ffaa33",delay:0.4,dur:3.0},
+  {left:90,size:0.9,color:"#44ff88",delay:1.2,dur:2.9},{left:96,size:1.0,color:"#00e5ff",delay:0.2,dur:3.4},
+  {left:40,size:0.7,color:"#cc44ff",delay:1.8,dur:2.7},{left:60,size:0.8,color:"#44ff88",delay:0.7,dur:3.1},
+];
+
+const thoughts={0:[],1:[],2:[],3:[]};
+const timeouts={0:[],1:[],2:[],3:[]};
+let animFrame=0, selectedAgent=null;
+
+// CLOCK
+setInterval(()=>{ document.getElementById('clock').textContent=new Date().toLocaleTimeString('en-US',{hour12:false}); },1000);
+document.getElementById('clock').textContent=new Date().toLocaleTimeString('en-US',{hour12:false});
+
+// THOUGHT STREAMS
+function runStream(idx) {
+  timeouts[idx].forEach(clearTimeout); timeouts[idx]=[];
+  thoughts[idx]=[];
+  STREAMS[idx].forEach(s=>{
+    const t=setTimeout(()=>{ thoughts[idx]=[...thoughts[idx].slice(-5),{t:s.t,x:s.x,id:Date.now()+Math.random()}]; refreshPanelIfOpen(idx); },s.d||0);
+    timeouts[idx].push(t);
+  });
+  const mx=Math.max(...STREAMS[idx].map(s=>s.d||0));
+  timeouts[idx].push(setTimeout(()=>runStream(idx),mx+2500));
 }
 
-function addThought(type, text) {
-  const container = document.getElementById('thoughts-container');
-  // remove cursor from previous last line
-  container.querySelectorAll('.cursor-blink').forEach(c => c.remove());
+// MUSHROOMS
+function buildMushroom(d,container) {
+  const el=document.createElement('div');
+  el.className='mushroom';
+  const cw=Math.round(18*d.size),ch=Math.round(12*d.size),sw=Math.round(5*d.size),sh=Math.round(9*d.size),gw=Math.round(24*d.size);
+  el.style.cssText=`left:${d.left}%;animation-duration:${d.dur}s;animation-delay:${d.delay}s;`;
+  el.innerHTML=`<div class="mush-cap" style="width:${cw}px;height:${ch}px;background:radial-gradient(ellipse at 40% 35%,white 0%,${d.color} 40%,${d.color}66 100%);box-shadow:0 0 ${cw}px ${d.color}88,0 0 ${cw*2}px ${d.color}33;"><div class="mush-spot" style="width:${Math.round(cw*.18)}px;height:${Math.round(cw*.18)}px;top:20%;left:22%;"></div><div class="mush-spot" style="width:${Math.round(cw*.12)}px;height:${Math.round(cw*.12)}px;top:35%;left:58%;"></div></div><div class="mush-stem" style="width:${sw}px;height:${sh}px;background:${d.color}33;"></div><div class="mush-glow" style="width:${gw}px;height:${Math.round(gw*.25)}px;background:${d.color}44;"></div>`;
+  container.appendChild(el);
+}
 
-  const line = document.createElement('div');
-  line.className = 'thought-line';
-  
-  const prefix = document.createElement('span');
-  prefix.className = `thought-prefix ${type}`;
-  prefix.textContent = type === 'tool' ? '⬡' : type === 'complete' ? '✓' : '›';
-  
-  const textSpan = document.createElement('span');
-  textSpan.textContent = text;
+function buildDrips(container) {
+  [5,12,20,28,36,45,54,63,71,79,87,93].forEach(left=>{
+    const h=10+Math.floor(Math.random()*22);
+    const el=document.createElement('div');
+    el.className='drip';
+    el.style.cssText=`left:${left}%;width:3px;height:${h}px;`;
+    el.innerHTML='<div class="drip-drop"></div>';
+    container.appendChild(el);
+  });
+}
 
-  const cursor = document.createElement('span');
-  cursor.className = 'cursor-blink';
-
-  line.appendChild(prefix);
-  line.appendChild(textSpan);
-  line.appendChild(cursor);
-  container.appendChild(line);
-  container.scrollTop = container.scrollHeight;
-
-  // keep only last 6 thoughts
-  while (container.children.length > 6) {
-    container.removeChild(container.firstChild);
+function buildSpores(container) {
+  const sc=['#00e5ff','#cc44ff','#44ff88','#ffaa33','#ff44aa'];
+  for(let i=0;i<14;i++){
+    const el=document.createElement('div');
+    el.className='spore';
+    const c=sc[i%sc.length],size=2+Math.random()*3;
+    el.style.cssText=`left:${5+i*7}%;bottom:${Math.random()*15}%;width:${size}px;height:${size}px;background:${c};box-shadow:0 0 ${size*3}px ${c};animation-duration:${7+i*.9}s;animation-delay:${i*.8}s;`;
+    container.appendChild(el);
   }
 }
 
-function runThoughtStream(agentIdx) {
-  clearThoughts();
-  const stream = thoughtStreams[agentIdx];
-  stream.forEach(thought => {
-    const t = setTimeout(() => {
-      addThought(thought.type || 'sys', thought.text);
-    }, thought.delay || 0);
-    thoughtIntervals.push(t);
+// PIXEL CHARACTER
+function charSVG(agent,frame) {
+  const c=agent.color, f=frame%2;
+  const bodies={
+    terminal:`<rect x="7" y="10" width="10" height="13" rx="2" fill="${c}"/><rect x="${2+f*2}" y="13" width="5" height="3" rx="1" fill="${c}"/><rect x="${17-f*2}" y="13" width="5" height="3" rx="1" fill="${c}"/>`,
+    corkboard:`<rect x="7" y="10" width="10" height="13" rx="2" fill="${c}"/><rect x="3" y="12" width="5" height="3" rx="1" fill="${c}"/><rect x="16" y="${11+f*2}" width="6" height="3" rx="1" fill="${c}" transform="rotate(-20 16 12)"/>`,
+    desk:`<rect x="7" y="10" width="10" height="13" rx="2" fill="${c}"/><rect x="3" y="13" width="5" height="3" rx="1" fill="${c}"/><rect x="16" y="${12+f*2}" width="6" height="3" rx="1" fill="${c}" transform="rotate(25 16 12)"/>`,
+    library:`<rect x="7" y="10" width="10" height="13" rx="2" fill="${c}"/><rect x="2" y="${13+f}" width="5" height="3" rx="1" fill="${c}"/><rect x="17" y="${13-f}" width="5" height="3" rx="1" fill="${c}"/>`,
+  };
+  const heads={
+    terminal:`<rect x="8" y="1" width="8" height="9" rx="2" fill="${c}"/><rect x="10" y="3" width="2" height="2" fill="#080412"/><rect x="13" y="3" width="2" height="2" fill="#080412"/><line x1="12" y1="1" x2="12" y2="-3" stroke="${c}" stroke-width="1.5"/><circle cx="12" cy="-5" r="2" fill="${c}" style="box-shadow:0 0 4px ${c}"/>`,
+    corkboard:`<ellipse cx="12" cy="5" rx="6" ry="5" fill="${c}"/><rect x="8" y="3" width="3" height="2" rx="1" fill="#080412"/><rect x="13" y="3" width="3" height="2" rx="1" fill="#080412"/>`,
+    desk:`<circle cx="12" cy="5" r="5" fill="${c}"/><circle cx="10" cy="4" r="1.5" fill="#080412"/><circle cx="14" cy="4" r="1.5" fill="#080412"/><path d="M10 7 Q12 9 14 7" stroke="#080412" stroke-width="1.2" fill="none"/>`,
+    library:`<rect x="8" y="1" width="8" height="9" rx="1" fill="${c}"/><rect x="10" y="3" width="2" height="2" fill="#080412"/><rect x="13" y="3" width="2" height="2" fill="#080412"/>`,
+  };
+  return `<svg width="24" height="32" viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 5px ${c});animation:charBob 2s ease-in-out infinite">${heads[agent.room]}${bodies[agent.room]}<rect x="8" y="23" width="4" height="5" rx="1" fill="${c}"/><rect x="12" y="23" width="4" height="5" rx="1" fill="${c}"/></svg>`;
+}
+
+// FURNITURE
+function furnitureHTML(agent) {
+  const c=agent.color;
+  const f={
+    terminal:`<div style="position:absolute;bottom:42px;left:6px;width:40px;height:26px;background:#0a0520;border:1px solid ${c}55;border-radius:3px;padding:4px"><div style="height:3px;margin-bottom:2px;background:${c}88;border-radius:1px;width:80%"></div><div style="height:3px;margin-bottom:2px;background:${c}55;border-radius:1px;width:60%"></div><div style="height:3px;background:${c}33;border-radius:1px;width:70%"></div><div style="position:absolute;bottom:3px;right:3px;width:4px;height:4px;border-radius:50%;background:${c};box-shadow:0 0 4px ${c};animation:blink 0.8s step-end infinite"></div></div><div style="position:absolute;bottom:42px;right:5px;width:11px;height:16px"><div style="width:11px;height:7px;border-radius:6px 6px 0 0;background:${c}cc;box-shadow:0 0 8px ${c}"></div><div style="width:3px;height:9px;background:#3d2d5c;margin:0 auto"></div></div>`,
+    corkboard:`<div style="position:absolute;top:18px;left:5px;right:5px;height:28px;background:#2a1a08;border:2px solid #5a3a18;border-radius:2px;overflow:hidden"><div style="position:absolute;top:4px;left:5px;width:22px;height:3px;background:${c}77;border-radius:1px"></div><div style="position:absolute;top:10px;left:4px;width:16px;height:3px;background:#ff44aa77;border-radius:1px"></div><div style="position:absolute;top:10px;left:24px;width:14px;height:3px;background:#ffaa3377;border-radius:1px"></div><div style="position:absolute;top:16px;left:5px;width:26px;height:3px;background:#44ff8877;border-radius:1px"></div><div style="position:absolute;top:4px;left:5px;width:4px;height:4px;border-radius:50%;background:#ff4444"></div><div style="position:absolute;top:4px;right:5px;width:4px;height:4px;border-radius:50%;background:#ff4444"></div></div><div style="position:absolute;top:15px;left:0;right:0;display:flex;gap:6px;padding:0 6px">${['#00e5ff','#cc44ff','#44ff88','#ffaa33','#ff44aa'].map(lc=>`<div style="width:5px;height:5px;border-radius:50%;background:${lc};box-shadow:0 0 5px ${lc}"></div>`).join('')}</div>`,
+    desk:`<div style="position:absolute;bottom:42px;left:4px;right:4px;height:18px;background:#1a0e06;border:1px solid #3a2010;border-radius:2px"><div style="position:absolute;right:3px;top:2px;width:14px;height:12px;background:#f0e8d0;border-radius:1px"><div style="height:2px;margin:2px 2px;background:#44444466;border-radius:1px"></div><div style="height:2px;margin:0 2px 1px;background:#44444433;border-radius:1px"></div></div></div><div style="position:absolute;bottom:56px;left:7px"><div style="width:5px;height:9px;background:#eeeeaa;border-radius:1px 1px 0 0;margin:0 auto"></div><div style="width:4px;height:5px;background:#ff8833;border-radius:50% 50% 20% 20%;margin:-1px auto 0;box-shadow:0 0 8px #ffaa33;animation:candleFlicker 0.4s ease-in-out infinite alternate"></div></div><div style="position:absolute;bottom:54px;right:4px;display:flex;flex-direction:column;gap:2px">${[0,1,2].map(i=>`<div style="width:14px;height:9px;background:#e8dfc0;border:1px solid #c0b090;border-radius:1px;transform:rotate(${(i-1)*4}deg)"></div>`).join('')}</div>`,
+    library:`<div style="position:absolute;top:16px;left:0;right:0;height:30px;background:#0f0820;border-bottom:2px solid #3d2d5c">${['#00e5ff','#cc44ff','#44ff88','#ffaa33','#ff44aa','#00e5ff','#cc44ff'].map((bc,i)=>`<div style="position:absolute;left:${3+i*7}px;top:3px;width:5px;height:24px;background:${bc}88;border-radius:1px 1px 0 0;box-shadow:0 0 4px ${bc}44"></div>`).join('')}</div><div style="position:absolute;top:46px;right:5px;width:11px;height:11px;border-radius:50%;background:radial-gradient(circle,white,${c});box-shadow:0 0 12px ${c};animation:orbFloat 2s ease-in-out infinite"></div>`,
+  };
+  return f[agent.room]||'';
+}
+
+// RENDER ROOMS
+function renderRooms() {
+  const grid=document.getElementById('agent-grid');
+  grid.innerHTML='';
+  AGENTS.forEach(agent=>{
+    const card=document.createElement('div');
+    card.className='room-card'+(selectedAgent?.id===agent.id?' selected':'');
+    if(selectedAgent?.id===agent.id){ card.style.setProperty('--sel-glow',agent.glow); card.style.borderColor=agent.color; }
+
+    const stalHTML=[10,14,8,13,16,9,12,11,15,7].map(h=>`<div class="stalactite" style="height:${h}px"></div>`).join('');
+    let tiles=''; for(let i=0;i<14;i++) tiles+='<div class="floor-tile"></div>';
+    const rmush=`<div style="position:absolute;bottom:38px;left:4px"><div style="width:9px;height:6px;border-radius:5px 5px 0 0;background:radial-gradient(ellipse at 40% 35%,white,${agent.color}66 50%,${agent.color}33 100%);box-shadow:0 0 7px ${agent.color}55"></div><div style="width:3px;height:4px;background:${agent.color}33;margin:0 auto"></div></div><div style="position:absolute;bottom:38px;right:4px"><div style="width:7px;height:5px;border-radius:4px 4px 0 0;background:radial-gradient(ellipse at 40% 35%,white,#00e5ff66 50%,#00e5ff33 100%);box-shadow:0 0 5px #00e5ff44"></div><div style="width:2px;height:3px;background:#00e5ff22;margin:0 auto"></div></div>`;
+
+    card.innerHTML=`
+      <div class="room-ceiling">${stalHTML}</div>
+      <div class="room-floor">${tiles}</div>
+      ${rmush}
+      ${furnitureHTML(agent)}
+      <div id="char-${agent.id}" style="position:absolute;bottom:38px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center">
+        ${charSVG(agent,animFrame)}
+        <div style="width:26px;height:5px;border-radius:50%;background:${agent.color}44;box-shadow:0 0 8px ${agent.color}55;filter:blur(2px);margin-top:-2px"></div>
+      </div>
+      <div class="room-label">
+        <span class="room-agent-name" style="color:${agent.color};text-shadow:0 0 8px ${agent.color}55">${agent.name}</span>
+        <span class="room-task-text">${agent.task}</span>
+        <div class="room-status-dot" style="background:${agent.statusColor};box-shadow:0 0 5px ${agent.statusColor}"></div>
+      </div>`;
+
+    card.addEventListener('click',()=>openPanel(agent));
+    grid.appendChild(card);
   });
-  // loop
-  const totalDur = Math.max(...stream.map(t => t.delay || 0)) + 2000;
-  const loop = setTimeout(() => runThoughtStream(agentIdx), totalDur + 1000);
-  thoughtIntervals.push(loop);
 }
 
-function selectAgent(idx) {
-  currentAgent = idx;
-  const agent = agents[idx];
-
-  // update active card
-  document.querySelectorAll('.agent-card').forEach((c, i) => {
-    c.classList.toggle('active', i === idx);
+// ANIMATE CHARACTERS
+setInterval(()=>{
+  animFrame=(animFrame+1)%4;
+  AGENTS.forEach(agent=>{
+    const el=document.getElementById('char-'+agent.id);
+    if(el) el.innerHTML=charSVG(agent,animFrame)+`<div style="width:26px;height:5px;border-radius:50%;background:${agent.color}44;box-shadow:0 0 8px ${agent.color}55;filter:blur(2px);margin-top:-2px"></div>`;
   });
+},550);
 
-  // update beam orb color
-  document.getElementById('beam-orb').textContent = agent.abbr;
-  document.getElementById('beam-orb').style.background = 
-    `radial-gradient(circle, ${agent.color}cc, ${agent.color}44)`;
-  document.getElementById('beam-orb').style.boxShadow = 
-    `0 0 30px ${agent.color}, 0 0 60px ${agent.color}66`;
-
-  // update beam ring color
-  document.getElementById('beam-ring-top').style.background = agent.color;
-  document.getElementById('beam-ring-top').style.boxShadow = `0 0 20px ${agent.color}`;
-  document.getElementById('beam-ring-bottom').style.background = agent.color;
-  document.getElementById('beam-ring-bottom').style.boxShadow = `0 0 20px ${agent.color}`;
-
-  document.getElementById('active-agent-name').textContent = agent.name;
-  document.getElementById('active-agent-name').style.textShadow = `0 0 20px ${agent.color}, 0 0 40px ${agent.color}88`;
-  document.getElementById('active-agent-role').textContent = '// ' + agent.role;
-
-  runThoughtStream(idx);
-  triggerSparkles(agent.color);
+// TASK FEED
+function renderFeed() {
+  const feed=document.getElementById('task-feed');
+  feed.innerHTML='';
+  TASKS.forEach(t=>{ feed.innerHTML+=`<div class="task-row"><div class="task-dot" style="background:${t.color};box-shadow:0 0 5px ${t.color}"></div><span class="task-agent" style="color:${t.color}">${t.agent}</span><span class="task-desc">${t.text}</span><span class="task-time">${t.time}</span></div>`; });
 }
 
-function triggerSparkles(color) {
-  const container = document.getElementById('tractor-beam-container');
-  const sparkColors = ['#ff44aa','#ffdd44','#44aaff','#44ff88','#cc44ff', color];
-  
-  for (let i = 0; i < 20; i++) {
-    const spark = document.createElement('div');
-    const isPlus = Math.random() > 0.5;
-    spark.className = `spark ${isPlus ? 'spark-plus' : 'spark-diamond'}`;
-    spark.style.color = sparkColors[Math.floor(Math.random() * sparkColors.length)];
-    spark.style.left = (30 + Math.random() * 140) + 'px';
-    spark.style.top = (50 + Math.random() * 100) + 'px';
-    spark.style.animationDuration = (1 + Math.random() * 2) + 's';
-    spark.style.animationDelay = (Math.random() * 0.5) + 's';
-    spark.style.filter = `drop-shadow(0 0 4px currentColor)`;
-    container.appendChild(spark);
-    setTimeout(() => spark.remove(), 3000);
-  }
+// PANEL
+function openPanel(agent) {
+  selectedAgent=agent; renderRooms();
+  const panel=document.getElementById('detail-panel');
+  panel.style.background=`linear-gradient(180deg,${agent.color}1a 0%,#080412 25%)`;
+  panel.style.borderColor=`${agent.color}44`;
+  panel.style.boxShadow=`0 -8px 40px ${agent.color}22`;
+  renderPanelContent(agent);
+  document.getElementById('detail-overlay').classList.add('open');
 }
 
-// ── SEND MISSION ──
+function renderPanelContent(agent) {
+  const pc=document.getElementById('panel-content');
+  const pCol=t=>t==='tool'?'#cc44ff':t==='ok'?'#44ff88':'#00e5ff';
+  const pChr=t=>t==='tool'?'⬡':t==='ok'?'✓':'›';
+  const tHTML=(thoughts[agent.id]||[]).map(th=>`<div class="thought-line"><span style="color:${pCol(th.t)};flex-shrink:0;font-size:13px">${pChr(th.t)}</span><span style="color:${th.t==='ok'?'#44ff88':'#d4c8f0'}">${th.x}</span></div>`).join('')+'<span class="cursor-blink"></span>';
+  const sHTML=[['Benevolence','#00e5ff',agent.scores.benevolence],['Symmetry','#cc44ff',agent.scores.symmetry],['Balance','#44ff88',agent.scores.balance]].map(([l,c,v])=>`<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px"><span style="color:#8877aa">${l}</span><span style="color:${c};font-weight:700">${v}/100</span></div><div class="score-bar-bg"><div class="score-bar-fill" style="width:${v}%;background:linear-gradient(90deg,${c}88,${c});box-shadow:0 0 8px ${c}55"></div></div></div>`).join('');
+  pc.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+      <div>
+        <div style="font-family:'VT323',monospace;font-size:26px;letter-spacing:3px;color:white;text-shadow:0 0 16px ${agent.color}">${agent.name}</div>
+        <div style="font-size:11px;color:${agent.color}aa;letter-spacing:2px;margin-top:2px">${agent.role} · ${agent.model}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:9px;letter-spacing:2px;color:${agent.statusColor};font-weight:700">${agent.status.toUpperCase()}</div>
+        <div style="width:8px;height:8px;border-radius:50%;background:${agent.statusColor};box-shadow:0 0 8px ${agent.statusColor};margin-left:auto;margin-top:5px"></div>
+      </div>
+    </div>
+    <div class="panel-section"><div class="panel-section-label">// CURRENT TASK</div><div style="font-size:13px;color:#d4c8f0;line-height:1.7">${agent.taskDetail}</div></div>
+    <div class="panel-section"><div class="panel-section-label">// LIVE THOUGHT STREAM</div><div id="live-thoughts-${agent.id}">${tHTML}</div></div>
+    <div class="panel-section"><div class="panel-section-label">// SYMMETRY SCORES</div>${sHTML}</div>
+    <div style="text-align:center;font-size:11px;color:var(--dim);margin-top:8px">tap outside to close</div>`;
+}
+
+function refreshPanelIfOpen(idx) {
+  if(selectedAgent?.id!==idx) return;
+  const el=document.getElementById(`live-thoughts-${idx}`);
+  if(!el) return;
+  const pCol=t=>t==='tool'?'#cc44ff':t==='ok'?'#44ff88':'#00e5ff';
+  const pChr=t=>t==='tool'?'⬡':t==='ok'?'✓':'›';
+  el.innerHTML=(thoughts[idx]||[]).map(th=>`<div class="thought-line"><span style="color:${pCol(th.t)};flex-shrink:0;font-size:13px">${pChr(th.t)}</span><span style="color:${th.t==='ok'?'#44ff88':'#d4c8f0'}">${th.x}</span></div>`).join('')+'<span class="cursor-blink"></span>';
+}
+
+function closePanel() { document.getElementById('detail-overlay').classList.remove('open'); selectedAgent=null; renderRooms(); }
+
 function sendMission() {
-  const input = document.getElementById('mission-input');
-  const text = input.value.trim();
-  if (!text) return;
-
-  // pick an agent and show routing
-  const targetIdx = Math.floor(Math.random() * agents.length);
-  selectAgent(targetIdx);
-  
-  // inject the mission as first thought
-  clearThoughts();
-  addThought('sys', `Mission received: "${text.substring(0, 50)}..."`);
-  setTimeout(() => addThought('tool', 'routing.autoAssign(mission, agentNetwork)'), 600);
-  setTimeout(() => addThought('sys', `Assigned to ${agents[targetIdx].name} — initiating`), 1200);
-
-  input.value = '';
+  const input=document.getElementById('mission-input');
+  const text=input.value.trim(); if(!text) return;
+  const idx=Math.floor(Math.random()*AGENTS.length);
+  input.value='';
+  thoughts[idx]=[{t:'sys',x:`Mission: "${text.substring(0,38)}..."`,id:Date.now()},{t:'tool',x:'routing.autoAssign(mission, network)',id:Date.now()+1},{t:'sys',x:`Deployed to ${AGENTS[idx].name}`,id:Date.now()+2}];
+  openPanel(AGENTS[idx]);
+  setTimeout(()=>runStream(idx),2500);
 }
+document.getElementById('mission-input').addEventListener('keydown',e=>{ if(e.key==='Enter') sendMission(); });
 
-function routeToAgent() {
-  const input = document.getElementById('mission-input');
-  if (input.value.trim()) {
-    selectAgent((currentAgent + 1) % agents.length);
-  }
-}
-
-// ── ENTER KEY ──
-document.getElementById('mission-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') sendMission();
-});
-
-// ── INIT ──
-runThoughtStream(0);
+// INIT
+const bg=document.getElementById('forest-bg');
+MUSH_DATA.forEach(m=>buildMushroom(m,bg));
+buildDrips(bg); buildSpores(bg);
+renderRooms(); renderFeed();
+AGENTS.forEach((_,i)=>runStream(i));
 </script>
 </body>
 </html>
