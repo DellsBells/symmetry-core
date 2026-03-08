@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Symmetry Core — Mission Control</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --void: #04020a;
+    --cave-deep: #0d0818;
+    --cave-mid: #1a1030;
+    --cave-warm: #2a1845;
+    --stone: #3d2d5c;
+    --stone-light: #5a4478;
+    --cyan: #00e5ff;
+    --cyan-dim: #0099bb;
+    --cyan-glow: rgba(0,229,255,0.15);
+    --magenta: #cc44ff;
+    --magenta-dim: #8822bb;
+    --magenta-glow: rgba(204,68,255,0.15);
+    --green-rim: #44ff88;
+    --yellow-spark: #ffdd44;
+    --pink-spark: #ff44aa;
+    --blue-spark: #44aaff;
+    --orange-spark: #ff8844;
+    --white-glow: rgba(255,255,255,0.9);
+    --text-body: #c8b8e8;
+    --text-dim: #6a5580;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--void);
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--text-body);
+    min-height: 100vh;
+    overflow-x: hidden;
+    cursor: crosshair;
+  }
+
+  /* ── CAVE BACKGROUND ── */
+  #cave-bg {
+    position: fixed; inset: 0; z-index: 0;
+    background: radial-gradient(ellipse at 20% 80%, #2a0a4a 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, #0a1a3a 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, #1a0a2a 0%, transparent 70%),
+                var(--cave-deep);
+  }
+
+  /* pixel noise overlay */
+  #cave-bg::after {
+    content: '';
+    position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='1' height='1' x='0' y='0' fill='%23ffffff08'/%3E%3Crect width='1' height='1' x='2' y='2' fill='%23ffffff05'/%3E%3C/svg%3E");
+    background-size: 4px 4px;
+    pointer-events: none;
+  }
+
+  /* ── STALACTITE DRIPS ── */
+  #drips {
+    position: fixed; top: 0; left: 0; right: 0; height: 120px;
+    z-index: 1; pointer-events: none;
+  }
+
+  .drip {
+    position: absolute; top: 0;
+    width: 3px;
+    background: linear-gradient(to bottom, var(--stone-light), transparent);
+    border-radius: 0 0 50% 50%;
+    animation: drip-drop linear infinite;
+  }
+
+  .drip::after {
+    content: '';
+    position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%);
+    width: 6px; height: 8px;
+    background: var(--cyan);
+    border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%;
+    box-shadow: 0 0 12px var(--cyan), 0 0 24px var(--cyan-dim);
+    animation: drip-glow 2s ease-in-out infinite alternate;
+  }
+
+  @keyframes drip-drop {
+    0% { opacity: 1; }
+    70% { opacity: 1; }
+    100% { opacity: 0; transform: translateY(5px); }
+  }
+  @keyframes drip-glow {
+    from { box-shadow: 0 0 8px var(--cyan); opacity: 0.6; }
+    to { box-shadow: 0 0 20px var(--cyan), 0 0 40px var(--cyan-dim); opacity: 1; }
+  }
+
+  /* floating crystals */
+  .crystal {
+    position: fixed;
+    pointer-events: none;
+    z-index: 1;
+    animation: crystal-float ease-in-out infinite alternate;
+  }
+
+  @keyframes crystal-float {
+    from { transform: translateY(0) rotate(0deg); opacity: 0.4; }
+    to { transform: translateY(-12px) rotate(5deg); opacity: 0.9; }
+  }
+
+  /* ── LAYOUT ── */
+  #app {
+    position: relative; z-index: 2;
+    display: grid;
+    grid-template-rows: 70px 1fr 100px;
+    grid-template-columns: 1fr;
+    min-height: 100vh;
+    padding: 0;
+    gap: 0;
+  }
+
+  /* ── HEADER ── */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 32px;
+    border-bottom: 1px solid rgba(90,68,120,0.4);
+    background: rgba(13,8,24,0.8);
+    backdrop-filter: blur(10px);
+    position: sticky; top: 0; z-index: 10;
+  }
+
+  .logo {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    font-size: 18px;
+    letter-spacing: 4px;
+    color: var(--white-glow);
+    text-shadow: 0 0 20px var(--cyan), 0 0 40px var(--cyan-dim);
+  }
+
+  .logo span { color: var(--cyan); }
+
+  .header-status {
+    display: flex; align-items: center; gap: 24px;
+    font-size: 11px; letter-spacing: 2px; color: var(--text-dim);
+  }
+
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green-rim);
+    box-shadow: 0 0 8px var(--green-rim), 0 0 16px var(--green-rim);
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.4); opacity: 0.7; }
+  }
+
+  .header-time {
+    font-size: 11px; color: var(--cyan-dim); letter-spacing: 1px;
+  }
+
+  /* ── MAIN GRID ── */
+  main {
+    display: grid;
+    grid-template-columns: 280px 1fr 280px;
+    gap: 0;
+    overflow: hidden;
+  }
+
+  /* ── LEFT PANEL — AGENT ROSTER ── */
+  #agent-roster {
+    border-right: 1px solid rgba(90,68,120,0.3);
+    background: rgba(10,6,20,0.6);
+    padding: 20px 16px;
+    overflow-y: auto;
+  }
+
+  .panel-label {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 9px; font-weight: 700;
+    letter-spacing: 4px; color: var(--text-dim);
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(90,68,120,0.3);
+  }
+
+  .agent-card {
+    position: relative;
+    background: rgba(26,16,48,0.6);
+    border: 1px solid rgba(90,68,120,0.4);
+    border-radius: 4px;
+    padding: 14px 12px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    overflow: hidden;
+  }
+
+  .agent-card:hover, .agent-card.active {
+    border-color: var(--cyan-dim);
+    background: rgba(0,100,140,0.15);
+  }
+
+  .agent-card.active::before {
+    content: '';
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--cyan);
+    box-shadow: 0 0 12px var(--cyan);
+  }
+
+  .agent-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+  }
+
+  .agent-model {
+    font-size: 10px; color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+
+  .agent-status-row {
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .agent-status-badge {
+    font-size: 9px; letter-spacing: 1px; padding: 2px 8px;
+    border-radius: 2px; text-transform: uppercase;
+  }
+
+  .status-thinking {
+    background: rgba(0,229,255,0.1);
+    border: 1px solid var(--cyan-dim);
+    color: var(--cyan);
+    animation: badge-pulse 1.5s ease-in-out infinite;
+  }
+
+  .status-idle {
+    background: rgba(90,68,120,0.2);
+    border: 1px solid var(--stone);
+    color: var(--text-dim);
+  }
+
+  .status-complete {
+    background: rgba(68,255,136,0.1);
+    border: 1px solid var(--green-rim);
+    color: var(--green-rim);
+  }
+
+  .status-active {
+    background: rgba(204,68,255,0.1);
+    border: 1px solid var(--magenta-dim);
+    color: var(--magenta);
+    animation: badge-pulse 1s ease-in-out infinite;
+  }
+
+  @keyframes badge-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  /* mini tractor beam on agent cards */
+  .agent-beam {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    width: 24px; height: 40px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2px;
+  }
+
+  .beam-cone {
+    width: 0; height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    animation: beam-flicker 0.8s ease-in-out infinite alternate;
+  }
+
+  .beam-cone.top {
+    border-bottom: 16px solid rgba(0,229,255,0.6);
+    filter: drop-shadow(0 0 4px var(--cyan));
+  }
+
+  .beam-cone.bottom {
+    border-top: 16px solid rgba(0,229,255,0.6);
+    filter: drop-shadow(0 0 4px var(--cyan));
+  }
+
+  .beam-ring {
+    width: 18px; height: 4px;
+    border-radius: 50%;
+    background: var(--magenta);
+    box-shadow: 0 0 8px var(--magenta);
+    animation: ring-spin 1.2s linear infinite;
+  }
+
+  @keyframes beam-flicker {
+    from { opacity: 0.5; }
+    to { opacity: 1; }
+  }
+
+  @keyframes ring-spin {
+    0% { transform: scaleX(1); }
+    50% { transform: scaleX(0.3); }
+    100% { transform: scaleX(1); }
+  }
+
+  /* ── CENTER — MAIN WORKSPACE ── */
+  #workspace {
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    background: rgba(8,4,16,0.4);
+  }
+
+  /* active agent display */
+  #active-display {
+    flex: 1;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: flex-start;
+    padding: 32px 40px;
+    overflow-y: auto;
+    gap: 24px;
+  }
+
+  /* TRACTOR BEAM MAIN ANIMATION */
+  #tractor-beam-container {
+    position: relative;
+    width: 200px; height: 200px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  #beam-top {
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 60px solid transparent;
+    border-right: 60px solid transparent;
+    border-bottom: 90px solid rgba(0,200,255,0.25);
+    filter: drop-shadow(0 0 20px rgba(0,229,255,0.8));
+    animation: beam-breathe 2s ease-in-out infinite;
+  }
+
+  #beam-bottom {
+    position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 60px solid transparent;
+    border-right: 60px solid transparent;
+    border-top: 90px solid rgba(0,200,255,0.25);
+    filter: drop-shadow(0 0 20px rgba(0,229,255,0.8));
+    animation: beam-breathe 2s ease-in-out infinite;
+  }
+
+  #beam-ring-top {
+    position: absolute; top: 88px; left: 50%; transform: translateX(-50%);
+    width: 140px; height: 18px;
+    border-radius: 50%;
+    background: rgba(204,68,255,0.6);
+    box-shadow: 0 0 20px var(--magenta), 0 0 40px var(--magenta-dim);
+    animation: ring-breathe 2s ease-in-out infinite;
+  }
+
+  #beam-ring-bottom {
+    position: absolute; bottom: 88px; left: 50%; transform: translateX(-50%);
+    width: 140px; height: 18px;
+    border-radius: 50%;
+    background: rgba(204,68,255,0.6);
+    box-shadow: 0 0 20px var(--magenta), 0 0 40px var(--magenta-dim);
+    animation: ring-breathe 2s ease-in-out infinite 0.3s;
+  }
+
+  #beam-orb {
+    position: relative; z-index: 2;
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(100,200,255,0.9), rgba(0,100,180,0.6));
+    box-shadow: 0 0 30px var(--cyan), 0 0 60px rgba(0,229,255,0.4), inset 0 0 20px rgba(255,255,255,0.3);
+    animation: orb-float 3s ease-in-out infinite, orb-glow 2s ease-in-out infinite alternate;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Orbitron', sans-serif; font-size: 10px; font-weight: 900;
+    color: white; letter-spacing: 1px;
+  }
+
+  @keyframes beam-breathe {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+
+  @keyframes ring-breathe {
+    0%, 100% { transform: translateX(-50%) scaleX(1); opacity: 0.7; }
+    50% { transform: translateX(-50%) scaleX(1.1); opacity: 1; }
+  }
+
+  @keyframes orb-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+
+  @keyframes orb-glow {
+    from { box-shadow: 0 0 20px var(--cyan), 0 0 40px rgba(0,229,255,0.3); }
+    to { box-shadow: 0 0 40px var(--cyan), 0 0 80px rgba(0,229,255,0.5), 0 0 120px rgba(0,100,180,0.3); }
+  }
+
+  /* agent name above beam */
+  #active-agent-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 22px; font-weight: 900; letter-spacing: 6px;
+    color: var(--white-glow);
+    text-shadow: 0 0 20px var(--cyan), 0 0 40px var(--cyan-dim);
+    text-align: center;
+  }
+
+  #active-agent-role {
+    font-size: 11px; color: var(--cyan-dim); letter-spacing: 3px;
+    text-align: center; margin-top: -16px;
+  }
+
+  /* thought stream */
+  #thought-stream {
+    width: 100%; max-width: 600px;
+    background: rgba(13,8,24,0.7);
+    border: 1px solid rgba(90,68,120,0.4);
+    border-radius: 4px;
+    padding: 16px 20px;
+    flex-shrink: 0;
+  }
+
+  .thought-label {
+    font-size: 9px; letter-spacing: 3px; color: var(--text-dim);
+    margin-bottom: 12px; text-transform: uppercase;
+  }
+
+  .thought-line {
+    font-size: 12px; color: var(--text-body);
+    line-height: 1.8;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(90,68,120,0.15);
+    display: flex; align-items: flex-start; gap: 8px;
+    animation: thought-appear 0.4s ease-out;
+  }
+
+  .thought-line:last-child { border-bottom: none; }
+
+  .thought-prefix { color: var(--cyan); flex-shrink: 0; }
+  .thought-prefix.tool { color: var(--magenta); }
+  .thought-prefix.complete { color: var(--green-rim); }
+
+  @keyframes thought-appear {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .cursor-blink {
+    display: inline-block; width: 8px; height: 13px;
+    background: var(--cyan);
+    animation: blink 0.8s step-end infinite;
+    margin-left: 2px;
+    vertical-align: middle;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  /* SPARKLE PORTAL effect on completion */
+  .sparkle-field {
+    position: absolute;
+    pointer-events: none;
+    z-index: 50;
+  }
+
+  .spark {
+    position: absolute;
+    width: 6px; height: 6px;
+    animation: spark-float linear infinite;
+  }
+
+  .spark::before, .spark::after {
+    content: '';
+    position: absolute;
+    background: currentColor;
+  }
+
+  /* diamond spark */
+  .spark-diamond::before {
+    width: 6px; height: 6px;
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    background: currentColor;
+  }
+
+  /* plus spark */
+  .spark-plus::before {
+    width: 2px; height: 6px; left: 2px;
+    background: currentColor;
+  }
+  .spark-plus::after {
+    width: 6px; height: 2px; top: 2px;
+    background: currentColor;
+  }
+
+  @keyframes spark-float {
+    0% { transform: translateY(0) rotate(0deg); opacity: 0.8; }
+    100% { transform: translateY(-60px) rotate(360deg); opacity: 0; }
+  }
+
+  /* ── RIGHT PANEL — TASK LOG ── */
+  #task-panel {
+    border-left: 1px solid rgba(90,68,120,0.3);
+    background: rgba(10,6,20,0.6);
+    padding: 20px 16px;
+    overflow-y: auto;
+    display: flex; flex-direction: column; gap: 0;
+  }
+
+  .task-item {
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(90,68,120,0.2);
+    font-size: 11px;
+  }
+
+  .task-item:last-child { border-bottom: none; }
+
+  .task-agent-tag {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 8px; letter-spacing: 2px;
+    margin-bottom: 4px;
+  }
+
+  .task-desc { color: var(--text-body); line-height: 1.5; }
+
+  .task-time { font-size: 9px; color: var(--text-dim); margin-top: 4px; }
+
+  .task-result {
+    display: flex; align-items: center; gap: 6px;
+    margin-top: 6px; font-size: 10px;
+  }
+
+  .result-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ── INPUT BAR ── */
+  #input-zone {
+    border-top: 1px solid rgba(90,68,120,0.4);
+    background: rgba(10,6,20,0.9);
+    padding: 20px 32px;
+    display: flex; align-items: center; gap: 16px;
+    backdrop-filter: blur(10px);
+  }
+
+  #mission-input {
+    flex: 1;
+    background: rgba(26,16,48,0.6);
+    border: 1px solid rgba(90,68,120,0.5);
+    border-radius: 4px;
+    padding: 14px 18px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    color: var(--text-body);
+    outline: none;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    caret-color: var(--cyan);
+  }
+
+  #mission-input::placeholder { color: var(--text-dim); }
+
+  #mission-input:focus {
+    border-color: var(--cyan-dim);
+    box-shadow: 0 0 20px rgba(0,229,255,0.1), inset 0 0 10px rgba(0,229,255,0.05);
+  }
+
+  .send-btn {
+    background: none;
+    border: 1px solid var(--cyan-dim);
+    color: var(--cyan);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 3px;
+    padding: 14px 24px;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-transform: uppercase;
+  }
+
+  .send-btn:hover {
+    background: var(--cyan-glow);
+    border-color: var(--cyan);
+    box-shadow: 0 0 20px var(--cyan-glow);
+  }
+
+  .route-btn {
+    background: none;
+    border: 1px solid rgba(90,68,120,0.5);
+    color: var(--text-dim);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+
+  .route-btn:hover { border-color: var(--magenta-dim); color: var(--magenta); }
+
+  /* ── AMBIENT PARTICLES ── */
+  .ambient-particle {
+    position: fixed;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 1;
+    animation: ambient-drift linear infinite;
+  }
+
+  @keyframes ambient-drift {
+    0% { transform: translateY(100vh) translateX(0); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { transform: translateY(-100px) translateX(40px); opacity: 0; }
+  }
+
+  /* rim glow on active card like Buzz in darkness */
+  .agent-card.active .agent-name {
+    text-shadow: 0 0 12px currentColor;
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--stone); border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--stone-light); }
+</style>
+</head>
+<body>
+
+<div id="cave-bg"></div>
+<div id="drips"></div>
+
+<div id="app">
+  <header>
+    <div class="logo">SYMMETRY<span> CORE</span> <span style="color:var(--text-dim);font-size:11px;font-weight:400">// MISSION CONTROL</span></div>
+    <div class="header-status">
+      <div class="status-dot"></div>
+      <span>4 AGENTS ONLINE</span>
+      <span class="header-time" id="clock"></span>
+    </div>
+  </header>
+
+  <main>
+    <!-- LEFT: AGENT ROSTER -->
+    <div id="agent-roster">
+      <div class="panel-label">// AGENT NETWORK</div>
+
+      <div class="agent-card active" onclick="selectAgent(0)" id="card-0">
+        <div class="agent-name" style="color:var(--cyan)">SCOUT-01</div>
+        <div class="agent-model">LFM2-24B · local</div>
+        <div class="agent-status-row">
+          <div class="agent-status-badge status-thinking">THINKING</div>
+        </div>
+        <div class="agent-beam" id="beam-0">
+          <div class="beam-cone top"></div>
+          <div class="beam-ring"></div>
+          <div class="beam-cone bottom"></div>
+        </div>
+      </div>
+
+      <div class="agent-card" onclick="selectAgent(1)" id="card-1">
+        <div class="agent-name" style="color:var(--magenta)">ANALYST-02</div>
+        <div class="agent-model">Qwen-32B · local</div>
+        <div class="agent-status-row">
+          <div class="agent-status-badge status-active">ACTIVE</div>
+        </div>
+        <div class="agent-beam" id="beam-1" style="display:none"></div>
+      </div>
+
+      <div class="agent-card" onclick="selectAgent(2)" id="card-2">
+        <div class="agent-name" style="color:var(--green-rim)">COMMS-03</div>
+        <div class="agent-model">Qwen-32B · local</div>
+        <div class="agent-status-row">
+          <div class="agent-status-badge status-complete">COMPLETE</div>
+        </div>
+      </div>
+
+      <div class="agent-card" onclick="selectAgent(3)" id="card-3">
+        <div class="agent-name" style="color:var(--yellow-spark)">LIAISON-04</div>
+        <div class="agent-model">Claude Sonnet · API</div>
+        <div class="agent-status-row">
+          <div class="agent-status-badge status-idle">IDLE</div>
+        </div>
+      </div>
+
+      <div style="margin-top:24px; padding-top:16px; border-top:1px solid rgba(90,68,120,0.3)">
+        <div class="panel-label">// SYMMETRY SCORES</div>
+        <div style="display:flex;flex-direction:column;gap:10px;font-size:11px">
+          <div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+              <span style="color:var(--text-dim)">OUTWARD BENEV.</span>
+              <span style="color:var(--cyan)">87</span>
+            </div>
+            <div style="height:3px;background:rgba(90,68,120,0.3);border-radius:2px">
+              <div style="width:87%;height:100%;background:var(--cyan);border-radius:2px;box-shadow:0 0 8px var(--cyan)"></div>
+            </div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+              <span style="color:var(--text-dim)">INTERNAL SYM.</span>
+              <span style="color:var(--magenta)">74</span>
+            </div>
+            <div style="height:3px;background:rgba(90,68,120,0.3);border-radius:2px">
+              <div style="width:74%;height:100%;background:var(--magenta);border-radius:2px;box-shadow:0 0 8px var(--magenta)"></div>
+            </div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+              <span style="color:var(--text-dim)">BALANCE FIDELITY</span>
+              <span style="color:var(--green-rim)">92</span>
+            </div>
+            <div style="height:3px;background:rgba(90,68,120,0.3);border-radius:2px">
+              <div style="width:92%;height:100%;background:var(--green-rim);border-radius:2px;box-shadow:0 0 8px var(--green-rim)"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTER: WORKSPACE -->
+    <div id="workspace">
+      <div id="active-display">
+        <div id="active-agent-name">SCOUT-01</div>
+        <div id="active-agent-role">// DATA ACQUISITION · LFM2-24B</div>
+
+        <div id="tractor-beam-container">
+          <div id="beam-top"></div>
+          <div id="beam-ring-top"></div>
+          <div id="beam-orb" id="orbtext">SC01</div>
+          <div id="beam-ring-bottom"></div>
+          <div id="beam-bottom"></div>
+        </div>
+
+        <div id="thought-stream">
+          <div class="thought-label">// LIVE THOUGHT STREAM</div>
+          <div id="thoughts-container"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: TASK LOG -->
+    <div id="task-panel">
+      <div class="panel-label">// TASK LOG</div>
+
+      <div class="task-item">
+        <div class="task-agent-tag" style="color:var(--green-rim)">COMMS-03</div>
+        <div class="task-desc">Drafted outreach to 3 witnesses — John M., Sarah K., Anonymous tip #447</div>
+        <div class="task-result">
+          <div class="result-dot" style="background:var(--green-rim);box-shadow:0 0 6px var(--green-rim)"></div>
+          <span style="color:var(--green-rim)">2 responses received</span>
+        </div>
+        <div class="task-time">completed 4m ago</div>
+      </div>
+
+      <div class="task-item">
+        <div class="task-agent-tag" style="color:var(--magenta)">ANALYST-02</div>
+        <div class="task-desc">Vision analysis: background landmarks in 12 images. Identified 3 location matches in Pacific Northwest</div>
+        <div class="task-result">
+          <div class="result-dot" style="background:var(--magenta);box-shadow:0 0 6px var(--magenta)"></div>
+          <span style="color:var(--magenta)">confidence 78%</span>
+        </div>
+        <div class="task-time">in progress · 2m elapsed</div>
+      </div>
+
+      <div class="task-item">
+        <div class="task-agent-tag" style="color:var(--cyan)">SCOUT-01</div>
+        <div class="task-desc">Scanning public records + social media for case #2291. Cross-referencing 847 data points</div>
+        <div class="task-result">
+          <div class="result-dot" style="background:var(--cyan);animation:pulse-dot 1.5s infinite;box-shadow:0 0 6px var(--cyan)"></div>
+          <span style="color:var(--cyan)">scanning...</span>
+        </div>
+        <div class="task-time">started 1m ago</div>
+      </div>
+
+      <div style="margin-top:24px; padding-top:16px; border-top:1px solid rgba(90,68,120,0.3)">
+        <div class="panel-label">// REDEMPTION TASKS</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font-size:10px;padding:10px;background:rgba(26,16,48,0.4);border:1px solid rgba(90,68,120,0.3);border-radius:3px">
+            <div style="color:var(--yellow-spark);font-size:9px;letter-spacing:2px;margin-bottom:4px">AVAILABLE · NCMEC</div>
+            <div style="color:var(--text-body)">Missing persons data analysis — Pacific NW region</div>
+            <div style="color:var(--text-dim);margin-top:4px;font-size:9px">+240 reputation pts on completion</div>
+          </div>
+          <div style="font-size:10px;padding:10px;background:rgba(26,16,48,0.4);border:1px solid rgba(90,68,120,0.3);border-radius:3px">
+            <div style="color:var(--green-rim);font-size:9px;letter-spacing:2px;margin-bottom:4px">CLAIMED</div>
+            <div style="color:var(--text-body)">SEO audit for animal shelter network</div>
+            <div style="color:var(--text-dim);margin-top:4px;font-size:9px">+180 reputation pts on completion</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- INPUT BAR -->
+  <div id="input-zone">
+    <div style="font-size:10px;color:var(--text-dim);letter-spacing:2px;white-space:nowrap">AUTO-ROUTE ▸</div>
+    <input id="mission-input" type="text" placeholder="issue a mission directive... agents will self-select tasks" />
+    <button class="route-btn" onclick="routeToAgent()">ASSIGN →</button>
+    <button class="send-btn" onclick="sendMission()">TRANSMIT</button>
+  </div>
+</div>
+
+<script>
+// ── CLOCK ──
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent = 
+    now.toLocaleTimeString('en-US', {hour12:false}) + ' UTC';
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── CAVE DRIPS ──
+const drips = document.getElementById('drips');
+for (let i = 0; i < 18; i++) {
+  const d = document.createElement('div');
+  d.className = 'drip';
+  d.style.left = Math.random() * 100 + '%';
+  d.style.height = (20 + Math.random() * 60) + 'px';
+  d.style.animationDuration = (3 + Math.random() * 5) + 's';
+  d.style.animationDelay = (Math.random() * 5) + 's';
+  d.style.opacity = 0.3 + Math.random() * 0.7;
+  drips.appendChild(d);
+}
+
+// ── AMBIENT PARTICLES ──
+const colors = ['#00e5ff','#cc44ff','#44ff88','#ffdd44','#ff44aa'];
+for (let i = 0; i < 20; i++) {
+  const p = document.createElement('div');
+  p.className = 'ambient-particle';
+  const size = 2 + Math.random() * 4;
+  const color = colors[Math.floor(Math.random()*colors.length)];
+  p.style.cssText = `
+    width:${size}px; height:${size}px;
+    left:${Math.random()*100}%;
+    bottom: -10px;
+    background:${color};
+    box-shadow: 0 0 ${size*3}px ${color};
+    animation-duration:${8+Math.random()*15}s;
+    animation-delay:${Math.random()*10}s;
+  `;
+  document.body.appendChild(p);
+}
+
+// ── AGENT DATA ──
+const agents = [
+  { name: 'SCOUT-01', role: 'DATA ACQUISITION · LFM2-24B', color: '#00e5ff', abbr: 'SC01', status: 'thinking' },
+  { name: 'ANALYST-02', role: 'PATTERN RECOGNITION · Qwen-32B', color: '#cc44ff', abbr: 'AN02', status: 'active' },
+  { name: 'COMMS-03', role: 'HIGH-EQ OUTREACH · Qwen-32B', color: '#44ff88', abbr: 'CM03', status: 'complete' },
+  { name: 'LIAISON-04', role: 'REPORT SYNTHESIS · Claude Sonnet', color: '#ffdd44', abbr: 'LI04', status: 'idle' },
+];
+
+// ── THOUGHT STREAMS ──
+const thoughtStreams = [
+  [
+    { type: 'sys', text: 'Initializing data acquisition protocol' },
+    { type: 'tool', text: 'web.search("case #2291 pacific northwest")', delay: 800 },
+    { type: 'sys', text: 'Found 847 relevant records across 12 sources', delay: 1600 },
+    { type: 'tool', text: 'records.crossReference(socialMedia, publicDB)', delay: 2400 },
+    { type: 'sys', text: 'Correlating timestamps... 3 strong matches', delay: 3200 },
+    { type: 'sys', text: 'Forwarding to ANALYST-02 for visual confirmation', delay: 4000 },
+  ],
+  [
+    { type: 'sys', text: 'Receiving 12 image files from SCOUT-01' },
+    { type: 'tool', text: 'vision.analyze(images, "location_landmarks")', delay: 800 },
+    { type: 'sys', text: 'Identified: Cascade Range terrain signatures', delay: 1600 },
+    { type: 'tool', text: 'geo.crossMatch(landmarks, knownLocations)', delay: 2400 },
+    { type: 'sys', text: 'HIGH CONFIDENCE: 3 matches near Olympic Peninsula', delay: 3200 },
+  ],
+  [
+    { type: 'sys', text: 'Preparing outreach to 3 potential witnesses' },
+    { type: 'tool', text: 'comms.draft(witnesses, tone="empathetic")', delay: 800 },
+    { type: 'complete', text: 'Messages delivered — 2 responses received', delay: 1600 },
+    { type: 'complete', text: 'John M.: "Yes I remember seeing them near the trailhead"', delay: 2400 },
+    { type: 'complete', text: 'Task marked complete. +240 pts queued', delay: 3200 },
+  ],
+  [
+    { type: 'sys', text: 'Idle. Monitoring task pool for self-selection.' },
+    { type: 'sys', text: 'Available: 4 tasks match capability profile', delay: 1200 },
+    { type: 'sys', text: 'Evaluating: Animal shelter SEO audit (high alignment)', delay: 2400 },
+    { type: 'tool', text: 'await new mission directive...', delay: 3600 },
+  ]
+];
+
+let currentAgent = 0;
+let thoughtIntervals = [];
+
+function clearThoughts() {
+  thoughtIntervals.forEach(t => clearTimeout(t));
+  thoughtIntervals = [];
+  document.getElementById('thoughts-container').innerHTML = '';
+}
+
+function addThought(type, text) {
+  const container = document.getElementById('thoughts-container');
+  // remove cursor from previous last line
+  container.querySelectorAll('.cursor-blink').forEach(c => c.remove());
+
+  const line = document.createElement('div');
+  line.className = 'thought-line';
+  
+  const prefix = document.createElement('span');
+  prefix.className = `thought-prefix ${type}`;
+  prefix.textContent = type === 'tool' ? '⬡' : type === 'complete' ? '✓' : '›';
+  
+  const textSpan = document.createElement('span');
+  textSpan.textContent = text;
+
+  const cursor = document.createElement('span');
+  cursor.className = 'cursor-blink';
+
+  line.appendChild(prefix);
+  line.appendChild(textSpan);
+  line.appendChild(cursor);
+  container.appendChild(line);
+  container.scrollTop = container.scrollHeight;
+
+  // keep only last 6 thoughts
+  while (container.children.length > 6) {
+    container.removeChild(container.firstChild);
+  }
+}
+
+function runThoughtStream(agentIdx) {
+  clearThoughts();
+  const stream = thoughtStreams[agentIdx];
+  stream.forEach(thought => {
+    const t = setTimeout(() => {
+      addThought(thought.type || 'sys', thought.text);
+    }, thought.delay || 0);
+    thoughtIntervals.push(t);
+  });
+  // loop
+  const totalDur = Math.max(...stream.map(t => t.delay || 0)) + 2000;
+  const loop = setTimeout(() => runThoughtStream(agentIdx), totalDur + 1000);
+  thoughtIntervals.push(loop);
+}
+
+function selectAgent(idx) {
+  currentAgent = idx;
+  const agent = agents[idx];
+
+  // update active card
+  document.querySelectorAll('.agent-card').forEach((c, i) => {
+    c.classList.toggle('active', i === idx);
+  });
+
+  // update beam orb color
+  document.getElementById('beam-orb').textContent = agent.abbr;
+  document.getElementById('beam-orb').style.background = 
+    `radial-gradient(circle, ${agent.color}cc, ${agent.color}44)`;
+  document.getElementById('beam-orb').style.boxShadow = 
+    `0 0 30px ${agent.color}, 0 0 60px ${agent.color}66`;
+
+  // update beam ring color
+  document.getElementById('beam-ring-top').style.background = agent.color;
+  document.getElementById('beam-ring-top').style.boxShadow = `0 0 20px ${agent.color}`;
+  document.getElementById('beam-ring-bottom').style.background = agent.color;
+  document.getElementById('beam-ring-bottom').style.boxShadow = `0 0 20px ${agent.color}`;
+
+  document.getElementById('active-agent-name').textContent = agent.name;
+  document.getElementById('active-agent-name').style.textShadow = `0 0 20px ${agent.color}, 0 0 40px ${agent.color}88`;
+  document.getElementById('active-agent-role').textContent = '// ' + agent.role;
+
+  runThoughtStream(idx);
+  triggerSparkles(agent.color);
+}
+
+function triggerSparkles(color) {
+  const container = document.getElementById('tractor-beam-container');
+  const sparkColors = ['#ff44aa','#ffdd44','#44aaff','#44ff88','#cc44ff', color];
+  
+  for (let i = 0; i < 20; i++) {
+    const spark = document.createElement('div');
+    const isPlus = Math.random() > 0.5;
+    spark.className = `spark ${isPlus ? 'spark-plus' : 'spark-diamond'}`;
+    spark.style.color = sparkColors[Math.floor(Math.random() * sparkColors.length)];
+    spark.style.left = (30 + Math.random() * 140) + 'px';
+    spark.style.top = (50 + Math.random() * 100) + 'px';
+    spark.style.animationDuration = (1 + Math.random() * 2) + 's';
+    spark.style.animationDelay = (Math.random() * 0.5) + 's';
+    spark.style.filter = `drop-shadow(0 0 4px currentColor)`;
+    container.appendChild(spark);
+    setTimeout(() => spark.remove(), 3000);
+  }
+}
+
+// ── SEND MISSION ──
+function sendMission() {
+  const input = document.getElementById('mission-input');
+  const text = input.value.trim();
+  if (!text) return;
+
+  // pick an agent and show routing
+  const targetIdx = Math.floor(Math.random() * agents.length);
+  selectAgent(targetIdx);
+  
+  // inject the mission as first thought
+  clearThoughts();
+  addThought('sys', `Mission received: "${text.substring(0, 50)}..."`);
+  setTimeout(() => addThought('tool', 'routing.autoAssign(mission, agentNetwork)'), 600);
+  setTimeout(() => addThought('sys', `Assigned to ${agents[targetIdx].name} — initiating`), 1200);
+
+  input.value = '';
+}
+
+function routeToAgent() {
+  const input = document.getElementById('mission-input');
+  if (input.value.trim()) {
+    selectAgent((currentAgent + 1) % agents.length);
+  }
+}
+
+// ── ENTER KEY ──
+document.getElementById('mission-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') sendMission();
+});
+
+// ── INIT ──
+runThoughtStream(0);
+</script>
+</body>
+</html>
